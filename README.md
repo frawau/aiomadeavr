@@ -306,7 +306,7 @@ One parameter:
 
 Trying to set the current value will often result in AvrTimeoutError exception. The device will simply not respond to that and will secretly despise you.
 
-The channel bias list may get out of sync when setting the sound mode to 'Auto'. It looks like.
+The channel bias list may get out of sync when setting the sound mode to 'Auto'. It looks like there is a delay before that information is sent.
 
 # Afterthoughts
 
