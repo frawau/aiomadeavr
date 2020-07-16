@@ -2,7 +2,7 @@
 
 A library/utility to control Marantz/Denon devices over the telnet port.
 
-[![PyPI version fury.io](https://badge.fury.io/aiomadeavr.svg)](https://pypi.python.org/pypi/aiomadeavr)
+[![PyPI version fury.io](https://badge.fury.io/py/aiomadeavr.svg)](https://pypi.python.org/pypi/aiomadeavr)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-licen)
 
 # Installation
