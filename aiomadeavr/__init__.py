@@ -25,4 +25,5 @@
 # IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 from .avr import avr_factory, AvrError, AvrTimeoutError
 from .discovery import start_discovery
-__version__ = '0.1'
+
+__version__ = "0.1"

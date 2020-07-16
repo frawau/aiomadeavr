@@ -34,11 +34,12 @@ from xml.dom.minidom import parseString
 MULTICAST_PORT = 1900
 MULTICAST_ADDR = "239.255.255.250"
 MULTICAST6_ADDR = "ff05::c"
-#MULTICAST6_ADDR = "ff08::c"
-#MULTICAST6_ADDR = "ff0e::c"
+# MULTICAST6_ADDR = "ff08::c"
+# MULTICAST6_ADDR = "ff0e::c"
+
 
 class DiscoveryClientProtocol:
-    def __init__(self, loop,addr=MULTICAST_ADDR, callb=None,timeout=5):
+    def __init__(self, loop, addr=MULTICAST_ADDR, callb=None, timeout=5):
         """Class representing a device discovery protocol
 
         :param loop: The asyncio loop
@@ -56,8 +57,8 @@ class DiscoveryClientProtocol:
         """
         self.loop = loop
         self.transport = None
-        self.addr=addr
-        self.timeout=timeout
+        self.addr = addr
+        self.timeout = timeout
         self.callb = callb
 
     def connection_made(self, transport):
@@ -66,23 +67,27 @@ class DiscoveryClientProtocol:
         """
 
         self.transport = transport
-        sock = self.transport.get_extra_info('socket')
+        sock = self.transport.get_extra_info("socket")
         addrinfo = socket.getaddrinfo(self.addr, None)[0]
-        ttl = struct.pack('@i', 1)
-        if addrinfo[0] == socket.AF_INET: # IPv4
+        ttl = struct.pack("@i", 1)
+        if addrinfo[0] == socket.AF_INET:  # IPv4
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
         else:
             sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, ttl)
-        request = '\r\n'.join(("M-SEARCH * HTTP/1.1",
-                               "HOST:{}:{}",
-                               "ST:upnp:rootdevice",
-                               #"ST:ssdp:all",
-                               "MX:2",
-                               'MAN:"ssdp:discover"',
-                               "", "")).format(self.addr,MULTICAST_PORT)
-        self.transport.sendto(request.encode(), (self.addr,MULTICAST_PORT))
-        self.loop.call_later(self.timeout,self.endme)
-
+        request = "\r\n".join(
+            (
+                "M-SEARCH * HTTP/1.1",
+                "HOST:{}:{}",
+                "ST:upnp:rootdevice",
+                # "ST:ssdp:all",
+                "MX:2",
+                'MAN:"ssdp:discover"',
+                "",
+                "",
+            )
+        ).format(self.addr, MULTICAST_PORT)
+        self.transport.sendto(request.encode(), (self.addr, MULTICAST_PORT))
+        self.loop.call_later(self.timeout, self.endme)
 
     def datagram_received(self, data, addr):
         """
@@ -92,9 +97,9 @@ class DiscoveryClientProtocol:
         if "denon-heos" in data.decode().lower():
             for x in data.decode("ascii").split("\r\n"):
                 if x.upper().startswith("LOCATION:"):
-                    loc=x.replace("LOCATION:","").strip()
-            #We got a possible match. Let's investiate further
-            self.loop.create_task(self.get_info(addr[0],loc))
+                    loc = x.replace("LOCATION:", "").strip()
+            # We got a possible match. Let's investiate further
+            self.loop.create_task(self.get_info(addr[0], loc))
 
     def error_received(self, exc):
         pass
@@ -111,8 +116,7 @@ class DiscoveryClientProtocol:
         """
         self.transport.close()
 
-
-    async def get_info(self,addr, url):
+    async def get_info(self, addr, url):
         """
             Let's analyse the data provided by the device
             answering our discovery call
@@ -130,7 +134,7 @@ class DiscoveryClientProtocol:
             for node in nodelist:
                 if node.nodeType == node.TEXT_NODE:
                     rc.append(node.data)
-            return ''.join(rc)
+            return "".join(rc)
 
         try:
             txt = None
@@ -140,11 +144,19 @@ class DiscoveryClientProtocol:
             if txt:
                 data = parseString(txt)
                 dev = data.getElementsByTagName("device")[0]
-                rdata={"ip": addr}
-                rdata["brand"] = getText(dev.getElementsByTagName("manufacturer")[0].childNodes)
-                rdata["model"] = getText(dev.getElementsByTagName("modelName")[0].childNodes)
-                rdata["serial"] = getText(dev.getElementsByTagName("serialNumber")[0].childNodes)
-                rdata["name"] = getText(dev.getElementsByTagName("friendlyName")[0].childNodes)
+                rdata = {"ip": addr}
+                rdata["brand"] = getText(
+                    dev.getElementsByTagName("manufacturer")[0].childNodes
+                )
+                rdata["model"] = getText(
+                    dev.getElementsByTagName("modelName")[0].childNodes
+                )
+                rdata["serial"] = getText(
+                    dev.getElementsByTagName("serialNumber")[0].childNodes
+                )
+                rdata["name"] = getText(
+                    dev.getElementsByTagName("friendlyName")[0].childNodes
+                )
                 logging.debug(f"Got device: {rdata}")
                 if self.callb:
                     self.callb(rdata)
@@ -152,16 +164,16 @@ class DiscoveryClientProtocol:
             logging.error(f"Error: Error when parsing location XML: {e}")
 
 
-async def start_discovery( addr=MULTICAST_ADDR, callb=None):
+async def start_discovery(addr=MULTICAST_ADDR, callb=None):
     loop = asyncio.get_event_loop()
     addrinfo = socket.getaddrinfo(MULTICAST_ADDR, None)[0]
     sock = socket.socket(addrinfo[0], socket.SOCK_DGRAM)
     connect = loop.create_datagram_endpoint(
-        lambda: DiscoveryClientProtocol(loop,MULTICAST_ADDR, callb=callb),
-        sock=sock
-        )
+        lambda: DiscoveryClientProtocol(loop, MULTICAST_ADDR, callb=callb), sock=sock
+    )
 
     await connect
+
 
 if __name__ == "__main__":
     import asyncio as aio
@@ -170,7 +182,7 @@ if __name__ == "__main__":
         print("Got device {}".format(data))
 
     loop = aio.get_event_loop()
-    loop.run_until_complete(start_discovery(MULTICAST_ADDR,cb) )
+    loop.run_until_complete(start_discovery(MULTICAST_ADDR, cb))
     try:
         loop.run_until_complete(aio.sleep(6))
     except:

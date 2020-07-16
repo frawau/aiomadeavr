@@ -36,6 +36,7 @@ class Power(Enum):
     On = "ON"
     Standby = "STANDBY"
 
+
 class ChannelBias(Enum):
     FrontLeft = "FL"
     FrontRight = "FR"
@@ -69,6 +70,7 @@ class ChannelBias(Enum):
     TopSurround = "TS"
     CentreHeight = "CH"
 
+
 class InputSource(Enum):
     Phono = "PHONO"
     CD = "CD"
@@ -95,6 +97,7 @@ class InputSource(Enum):
     OnlineMusic = "NET"
     Bluetooth = "BT"
 
+
 class AudioInput(Enum):
     Auto = "AUTO"
     HDMI = "HDMI"
@@ -103,10 +106,12 @@ class AudioInput(Enum):
     MultiChannel = "7.1IN"
     NoSound = "NO"
 
+
 class EcoMode(Enum):
     Off = "OFF"
     On = "ON"
     Auto = "AUTO"
+
 
 class SurroundMode(Enum):
     # Settable values
@@ -127,4 +132,3 @@ class SurroundMode(Enum):
     # Rotate between options
     Left = "LEFT"
     Right = "RIGHT"
-

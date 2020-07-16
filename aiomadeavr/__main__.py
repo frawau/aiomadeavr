@@ -28,41 +28,45 @@ from functools import partial
 import argparse
 import logging
 
-def quick_print(val,depth=1):
-    if isinstance(val,dict):
-        for k,v in val.items():
-            if isinstance(v,dict):
-                print("\t"*depth + k+": ")
-                quick_print(v,depth+1)
-            else:
-                print("\t"*depth + f"{k}:\t{v}")
 
-#Simple device control from console
-class devices():
+def quick_print(val, depth=1):
+    if isinstance(val, dict):
+        for k, v in val.items():
+            if isinstance(v, dict):
+                print("\t" * depth + k + ": ")
+                quick_print(v, depth + 1)
+            else:
+                print("\t" * depth + f"{k}:\t{v}")
+
+
+# Simple device control from console
+class devices:
     """ A simple class with a register and  unregister methods
     """
+
     def __init__(self, debug):
-        self.devices={}
-        self.doi=None #device of interest
-        self.secondary = None  #Either "source", "surround", or channel
+        self.devices = {}
+        self.doi = None  # device of interest
+        self.secondary = None  # Either "source", "surround", or channel
         self.debug = debug
 
-    def register(self,info):
+    def register(self, info):
         if "serial" in info and info["serial"].lower() not in self.devices:
             aio.create_task(self.set_device(info))
         else:
             if not self.devices[info["serial"].lower()].alive:
                 aio.create_task(self.set_device(info))
-    def unregister(self,mac):
+
+    def unregister(self, mac):
         if mac.lower() in self.devices:
-            logging.debug("%s is gone"% self.devices[mac.lower()].name)
+            logging.debug("%s is gone" % self.devices[mac.lower()].name)
             self.devices[mac.lower()].stop()
-            del(self.devices[mac.lower()])
+            del self.devices[mac.lower()]
 
     async def set_device(self, info):
         logging.debug(f"Adding {info}")
         try:
-            newdev = await avr.avr_factory(info["name"],info["ip"])
+            newdev = await avr.avr_factory(info["name"], info["ip"])
             if newdev:
                 self.devices[info["serial"].lower()] = newdev
                 if self.debug:
@@ -80,18 +84,18 @@ def readin():
 
     selection = sys.stdin.readline().strip("\n")
 
-    loaddr = [ x for x in MyDevices.devices.keys()]
+    loaddr = [x for x in MyDevices.devices.keys()]
     loaddr.sort()
-    lov=[ x for x in selection.split(" ") if x != ""]
+    lov = [x for x in selection.split(" ") if x != ""]
     if lov:
         if MyDevices.doi:
             if MyDevices.secondary:
                 if MyDevices.secondary == "source":
-                    loi =  MyDevices.doi.source_list
+                    loi = MyDevices.doi.source_list
                     loi.sort()
                     try:
-                        sel = int(lov[0])-1
-                        if sel >= 0 and sel<len(loi):
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
                             source = loi[sel]
                             aio.create_task(MyDevices.doi.select_source(source))
                         else:
@@ -99,11 +103,11 @@ def readin():
                     except:
                         print("\nError: Source selection must be a number.\n")
                 elif MyDevices.secondary == "surround":
-                    loi =  MyDevices.doi.sound_mode_list
+                    loi = MyDevices.doi.sound_mode_list
                     loi.sort()
                     try:
-                        sel = int(lov[0])-1
-                        if sel >= 0 and sel<len(loi):
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
                             mode = loi[sel]
                             aio.create_task(MyDevices.doi.select_sound_mode(mode))
                         else:
@@ -111,44 +115,52 @@ def readin():
                     except:
                         print("\nError: Surround Mode selection must be a number.\n")
                 elif MyDevices.secondary == "channel":
-                    loi =  MyDevices.doi.channels_bias_list
+                    loi = MyDevices.doi.channels_bias_list
                     loi.sort()
                     try:
-                        sel = int(lov[0])-1
+                        sel = int(lov[0]) - 1
                         if sel == len(loi):
                             aio.create_task(MyDevices.doi.channels_bias_reset())
-                        elif sel >= 0 and sel<len(loi):
+                        elif sel >= 0 and sel < len(loi):
                             if lov[1].lower() == "up":
                                 aio.create_task(MyDevices.doi.channel_bias_up(loi[sel]))
                             elif lov[1].lower() == "down":
-                                aio.create_task(MyDevices.doi.channel_bias_down(loi[sel]))
+                                aio.create_task(
+                                    MyDevices.doi.channel_bias_down(loi[sel])
+                                )
                             else:
                                 level = float(lov[1])
-                                aio.create_task(MyDevices.doi.set_channel_bias(loi[sel],level))
+                                aio.create_task(
+                                    MyDevices.doi.set_channel_bias(loi[sel], level)
+                                )
                     except:
-                        print("\nError: Channel Bias meeds a channel and a level (float, up or down).\n")
+                        print(
+                            "\nError: Channel Bias meeds a channel and a level (float, up or down).\n"
+                        )
 
-                MyDevices.doi=None
+                MyDevices.doi = None
                 MyDevices.secondary = None
 
             else:
-                #try:
+                # try:
                 if int(lov[0]) == 0:
-                    MyDevices.doi=None
+                    MyDevices.doi = None
                 elif int(lov[0]) == 1:
-                    if len(lov) >1:
-                        if lov[1].lower() in ["1","on","true"]:
+                    if len(lov) > 1:
+                        if lov[1].lower() in ["1", "on", "true"]:
                             aio.create_task(MyDevices.doi.turn_on())
                         else:
                             aio.create_task(MyDevices.doi.turn_off())
-                        MyDevices.doi=None
+                        MyDevices.doi = None
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
-                    aio.create_task(MyDevices.doi.mute_volume(not MyDevices.doi.is_volume_muted))
-                    MyDevices.doi=None
+                    aio.create_task(
+                        MyDevices.doi.mute_volume(not MyDevices.doi.is_volume_muted)
+                    )
+                    MyDevices.doi = None
                 elif int(lov[0]) == 3:
-                    if len(lov) >1:
+                    if len(lov) > 1:
                         if lov[1].lower() == "up":
                             aio.create_task(MyDevices.doi.volume_up())
                         elif lov[1].lower() == "down":
@@ -159,10 +171,14 @@ def readin():
                                 aio.create_task(MyDevices.doi.set_volume(lvl))
                             except:
                                 print(f"Error: {lov[1]} is not a float.")
-                                print("Error: For volume you must specify 'up', 'down' or a float value.\n")
+                                print(
+                                    "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                                )
                     else:
-                        print("Error: For volume you must specify 'up', 'down' or a float value.\n")
-                    MyDevices.doi=None
+                        print(
+                            "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                        )
+                    MyDevices.doi = None
 
                 elif int(lov[0]) == 4:
                     MyDevices.secondary = "source"
@@ -196,20 +212,19 @@ def readin():
                 elif int(lov[0]) == 7:
                     print(f"Status for {MyDevices.doi.name}")
                     quick_print(MyDevices.doi.status)
-                    MyDevices.doi=None
-                #except:
-                    #print ("\nError: Selection must be a number.\n")
+                    MyDevices.doi = None
+                # except:
+                # print ("\nError: Selection must be a number.\n")
         else:
             try:
                 if int(lov[0]) > 0:
-                    if int(lov[0]) <=len(MyDevices.devices):
-                        MyDevices.doi=MyDevices.devices[loaddr[int(lov[0])-1]]
+                    if int(lov[0]) <= len(MyDevices.devices):
+                        MyDevices.doi = MyDevices.devices[loaddr[int(lov[0]) - 1]]
                     else:
                         print("\nError: Not a valid selection.\n")
 
             except:
-                print ("\nError: Selection must be a number.\n")
-
+                print("\nError: Selection must be a number.\n")
 
     if MyDevices.doi:
         if MyDevices.secondary is None:
@@ -224,22 +239,32 @@ def readin():
             print("")
             print("\t[0]\tBack to device selection")
     else:
-        idx=1
+        idx = 1
         print("Select Device:")
         for x in loaddr:
-            print("\t[{}]\t{}".format(idx,MyDevices.devices[x].name or x))
-            idx+=1
+            print("\t[{}]\t{}".format(idx, MyDevices.devices[x].name or x))
+            idx += 1
     print("")
-    print("Your choice: ", end='',flush=True)
+    print("Your choice: ", end="", flush=True)
+
 
 def notification(lbl, value):
     print(f"Value for {lbl} changed to {value}")
 
-parser = argparse.ArgumentParser(description="Track and interact with Marantz/Denon devices.")
-parser.add_argument("-v","--verbose", default=False, action="store_true",
-                    help="Print more information.")
-parser.add_argument("-d","--debug", default=False, action="store_true",
-                    help="Print debug information.")
+
+parser = argparse.ArgumentParser(
+    description="Track and interact with Marantz/Denon devices."
+)
+parser.add_argument(
+    "-v",
+    "--verbose",
+    default=False,
+    action="store_true",
+    help="Print more information.",
+)
+parser.add_argument(
+    "-d", "--debug", default=False, action="store_true", help="Print debug information."
+)
 
 try:
     opts = parser.parse_args()
@@ -254,12 +279,12 @@ else:
     logging.basicConfig(level=logging.ERROR)
 
 
-MyDevices= devices(opts.debug)
+MyDevices = devices(opts.debug)
 loop = aio.get_event_loop()
 loop.run_until_complete(avr.start_discovery(callb=MyDevices.register))
 try:
-    loop.add_reader(sys.stdin,readin)
-    print("Hit \"Enter\" to start")
+    loop.add_reader(sys.stdin, readin)
+    print('Hit "Enter" to start')
     print("Use Ctrl-C to quit")
     loop.run_forever()
 except:

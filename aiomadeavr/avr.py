@@ -35,18 +35,33 @@ from enum import Enum
 from typing import Any, List, Mapping, Optional, Callable
 from .enums import InputSource, Power, SurroundMode, ChannelBias, EcoMode, AudioInput
 
-#Some replacement for the surrond sound format
-SSTRANSFORM = [("Audio-"," "),("Dd","Dolby Digital "),("DD","Dolby Digital "),("Dts","DTS"),['Mstr','Master '],
-                     ("Dsur","Digital Surround "),("Mtrx","Matrix"),("Dscrt","Discrete "),(" Es "," ES ")]
+# Some replacement for the surrond sound format
+SSTRANSFORM = [
+    ("Audio-", " "),
+    ("Dd", "Dolby Digital "),
+    ("DD", "Dolby Digital "),
+    ("Dts", "DTS"),
+    ["Mstr", "Master "],
+    ("Dsur", "Digital Surround "),
+    ("Mtrx", "Matrix"),
+    ("Dscrt", "Discrete "),
+    (" Es ", " ES "),
+]
 EXTRAS = ["SSINFAI"]
+
 
 def cc_string(identifier: str) -> str:
     """ From https://stackoverflow.com/questions/29916065/how-to-do-camelcase-split-in-python """
-    matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
+    matches = re.finditer(
+        ".+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)", identifier
+    )
     return " ".join([m.group(0) for m in matches])
 
+
 def only_int(val: str) -> str:
-    return "".join([x for x in val if x in ['0','1','2','3','4','5','6','7','8','9']])
+    return "".join(
+        [x for x in val if x in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]]
+    )
 
 
 class AvrError(Exception):
@@ -54,13 +69,16 @@ class AvrError(Exception):
 
     pass
 
+
 class AvrTimeoutError(AvrError):
     """A request to the AVR has timed out."""
 
     pass
 
 
-async def avr_factory(name: str, host: str, port: int = 23, timeout: float = 3.0) -> "MDAVR":
+async def avr_factory(
+    name: str, host: str, port: int = 23, timeout: float = 3.0
+) -> "MDAVR":
     """Connect to an AVR.
 
         :param name: The name of this device.
@@ -93,7 +111,7 @@ class _CommandDef:
     label: str
     vals: Optional[Enum]
 
-    def __init__(self,  label: str, vals: Any):
+    def __init__(self, label: str, vals: Any):
         self.label = label
         self.values = vals
 
@@ -104,7 +122,7 @@ class MDAVR:
     Uses `connect` to create a connection to the AVR.
     """
 
-    CMDS_DEFS: Mapping[str,_CommandDef] = {
+    CMDS_DEFS: Mapping[str, _CommandDef] = {
         "PW": _CommandDef("Power", Power),
         "MU": _CommandDef("Mute", None),
         "MV": _CommandDef("Volume", None),
@@ -119,30 +137,34 @@ class MDAVR:
     _timeout: float
 
     def __init__(
-        self, name: str, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, timeout: float,
+        self,
+        name: str,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        timeout: float,
     ):
         self.name = name
         self._reader = reader
         self._writer = writer
         self._timeout = timeout
         self.status = {}
-        self.maxvol = 98      #Good default ;)
+        self.maxvol = 98  # Good default ;)
         self.alive = True
         self.queue = []
         for x in self.CMDS_DEFS:
-            self.status[self.CMDS_DEFS[x].label]="-"
+            self.status[self.CMDS_DEFS[x].label] = "-"
         self.cvend = True
         self.notify = None
-        #Start reading
+        # Start reading
         self.rtask = asyncio.get_event_loop().create_task(self._do_read())
 
-    def _get_current(self,cmd):
+    def _get_current(self, cmd):
         return self.status[self.CMDS_DEFS[cmd].label]
 
-    def _get_list(self,cmd):
+    def _get_list(self, cmd):
         return [cc_string(x.name) for x in list(self.CMDS_DEFS[cmd].values)]
 
-    #API Starts here
+    # API Starts here
     @property
     def power(self) -> Optional[Power]:
         """Power state of the AVR."""
@@ -194,7 +216,7 @@ class MDAVR:
         return self._get_list("ECO")
 
     @property
-    def channels_bias(self) -> Mapping[str,float]:
+    def channels_bias(self) -> Mapping[str, float]:
         return self._get_current("CV")
 
     @property
@@ -202,12 +224,11 @@ class MDAVR:
         """List of currently available."""
         return [x for x in self._get_current("CV").keys()]
 
-
     async def refresh(self) -> None:
         """Refresh all properties from the AVR."""
 
         for cmd_def in self.CMDS_DEFS:
-            fut = await self._send_command(cmd_def,"?")
+            fut = await self._send_command(cmd_def, "?")
             try:
                 await self._wait_for_response_with_timeout(fut)
             except asyncio.TimeoutError:
@@ -232,7 +253,6 @@ class MDAVR:
             self._clean_fut(fut)
             raise AvrTimeoutError
 
-
     async def mute_volume(self, mute: bool) -> None:
         """Mute or unmute the volume.
 
@@ -254,12 +274,12 @@ class MDAVR:
         """
         if level > self.maxvol:
             level = maxvol
-        if int(10*level)%10:
-            #Needs to be a nultiple of 5
-            level = int(5*round(10*level/5))
+        if int(10 * level) % 10:
+            # Needs to be a nultiple of 5
+            level = int(5 * round(10 * level / 5))
         else:
             level = int(level)
-        fut = await self._send_command("MV",f"{level:02}")
+        fut = await self._send_command("MV", f"{level:02}")
         try:
             await self._wait_for_response_with_timeout(fut)
         except asyncio.TimeoutError:
@@ -268,7 +288,7 @@ class MDAVR:
 
     async def volume_up(self) -> None:
         """Turn the volume level up one notch."""
-        fut = await self._send_command("MV","UP")
+        fut = await self._send_command("MV", "UP")
         try:
             await self._wait_for_response_with_timeout(fut)
         except asyncio.TimeoutError:
@@ -277,7 +297,7 @@ class MDAVR:
 
     async def volume_down(self) -> None:
         """Turn the volume level down one notch."""
-        fut = await self._send_command("MV","DOWN")
+        fut = await self._send_command("MV", "DOWN")
         try:
             await self._wait_for_response_with_timeout(fut)
         except asyncio.TimeoutError:
@@ -296,17 +316,16 @@ class MDAVR:
             await asyncio.sleep(0)
             return
 
-
         if self.channels_bias[chan] != level:
-            chan = chan.replace(" ","")
-            level = level+50 #50 is 0dB
+            chan = chan.replace(" ", "")
+            level = level + 50  # 50 is 0dB
             if level < 38:
                 level = 38
             elif level > 62:
                 level = 62
-            if int(10*level)%10:
-                #Needs to be a nultiple of 5
-                level = int(5*round(10*level/5))
+            if int(10 * level) % 10:
+                # Needs to be a nultiple of 5
+                level = int(5 * round(10 * level / 5))
             else:
                 level = int(level)
 
@@ -323,7 +342,9 @@ class MDAVR:
                     self._clean_fut(fut)
                     raise AvrTimeoutError
             else:
-                logging.error(f"Channel {chan} should exist. This should not have happened.")
+                logging.error(
+                    f"Channel {chan} should exist. This should not have happened."
+                )
 
     async def channel_bias_up(self, chan: str) -> None:
         """Turn the volume level up one notch."""
@@ -332,12 +353,12 @@ class MDAVR:
             await asyncio.sleep(0)
             return
         if self.channels_bias[chan] == 12:
-            #We are at the limit. It won't respond
+            # We are at the limit. It won't respond
             logging.debugf(f"Channel {chan} it at the upper limit.")
             await asyncio.sleep(0)
             return
 
-        chan = chan.replace(" ","")
+        chan = chan.replace(" ", "")
         cmd = None
         for x in self.CMDS_DEFS["CV"].values:
             if x.name == chan:
@@ -351,7 +372,9 @@ class MDAVR:
                 self._clean_fut(fut)
                 raise AvrTimeoutError
         else:
-            logging.error(f"Channel {chan} should exist. This should not have happened.")
+            logging.error(
+                f"Channel {chan} should exist. This should not have happened."
+            )
 
     async def channel_bias_down(self, chan: str) -> None:
         """Turn the volume level down one notch."""
@@ -360,26 +383,28 @@ class MDAVR:
             await asyncio.sleep(0)
             return
         if self.channels_bias[chan] == -12:
-            #We are at the limit. It won't respond
+            # We are at the limit. It won't respond
             logging.debugf(f"Channel {chan} it at the lowewr limit.")
             await asyncio.sleep(0)
             return
 
-        chan = chan.replace(" ","")
+        chan = chan.replace(" ", "")
         cmd = None
         for x in self.CMDS_DEFS["CV"].values:
             if x.name == chan:
                 cmd = x.value
                 break
         if cmd:
-            fut = await self._send_command("CV",f"{cmd} DOWN")
+            fut = await self._send_command("CV", f"{cmd} DOWN")
             try:
                 await self._wait_for_response_with_timeout(fut)
             except asyncio.TimeoutError:
                 self._clean_fut(fut)
                 raise AvrTimeoutError
         else:
-            logging.error(f"Channel {chan} should exist. This should not have happened.")
+            logging.error(
+                f"Channel {chan} should exist. This should not have happened."
+            )
 
     async def channels_bias_reset(self):
         fut = await self._send_command("CV", "ZRL")
@@ -392,7 +417,7 @@ class MDAVR:
     async def select_source(self, source: str) -> None:
         """Select the input source."""
         try:
-            source = self.CMDS_DEFS["SI"].values[source.replace(" ","")]
+            source = self.CMDS_DEFS["SI"].values[source.replace(" ", "")]
         except:
             logging.warning(f"Warning: {source} is not a valid source")
             await asyncio.sleep(0)
@@ -401,14 +426,16 @@ class MDAVR:
         try:
             await self._wait_for_response_with_timeout(fut)
         except asyncio.TimeoutError:
-            #Source might not be available
-            logging.warning(f"Warning: {source} may not be a valid source for this device.")
+            # Source might not be available
+            logging.warning(
+                f"Warning: {source} may not be a valid source for this device."
+            )
             self._clean_fut(fut)
 
     async def select_sound_mode(self, mode: str) -> None:
         """Select the sound mode."""
         try:
-            mode = self.CMDS_DEFS["MS"].values[mode.replace(" ","")]
+            mode = self.CMDS_DEFS["MS"].values[mode.replace(" ", "")]
         except:
             logging.warning(f"Warning: {mode} is not a valid mode")
             await asyncio.sleep(0)
@@ -417,7 +444,9 @@ class MDAVR:
         try:
             await self._wait_for_response_with_timeout(fut)
         except:
-            logging.warning(f"Warning: {mode} may not be a valid surround mode for this device.")
+            logging.warning(
+                f"Warning: {mode} may not be a valid surround mode for this device."
+            )
             self._clean_fut(fut)
 
     async def select_eco_mode(self, mode: str) -> None:
@@ -442,13 +471,13 @@ class MDAVR:
         self._writer.close()
         self.rtask.cancel()
 
-    #API ends here
+    # API ends here
 
     async def _send_command(self, cmd: str, val: Any) -> asyncio.Future:
         loop = asyncio.get_event_loop()
         fut = loop.create_future()
-        self.queue.append([cmd,fut])
-        tosend=f"{cmd}{val}\r"
+        self.queue.append([cmd, fut])
+        tosend = f"{cmd}{val}\r"
         logging.debug(f"Sending {tosend}")
         self._writer.write(tosend.encode())
         await self._writer.drain()
@@ -467,8 +496,9 @@ class MDAVR:
         await fut
 
     def _process_response(self, response: str) -> Optional[str]:
-        matches = [cmd for cmd in self.CMDS_DEFS.keys() if response.startswith(cmd)] + \
-                    [cmd for cmd in EXTRAS if response.startswith(cmd)]
+        matches = [cmd for cmd in self.CMDS_DEFS.keys() if response.startswith(cmd)] + [
+            cmd for cmd in EXTRAS if response.startswith(cmd)
+        ]
 
         if not matches:
 
@@ -478,15 +508,15 @@ class MDAVR:
             matches.sort(key=len, reverse=True)
         match = matches[0]
 
-        if getattr(self,"_parse_"+match, None):
-            getattr(self,"_parse_"+match)(response.strip()[len(match):])
+        if getattr(self, "_parse_" + match, None):
+            getattr(self, "_parse_" + match)(response.strip()[len(match) :])
         else:
-            #A few special cases ... for now
+            # A few special cases ... for now
             if response.startswith("SSINFAISFSV"):
                 try:
                     sr = int(response.split(" ")[-1])
                     if sr > 200:
-                        sr = round(sr/10,1)
+                        sr = round(sr / 10, 1)
                     else:
                         sr = float(sr)
                     self.status["Sampling Rate"] = sr
@@ -504,16 +534,16 @@ class MDAVR:
                 if self.status[lbl] != cc_string(x.name):
                     self.status[lbl] = cc_string(x.name)
                     if self.notify:
-                        self.notify(lbl,self.status[lbl])
+                        self.notify(lbl, self.status[lbl])
 
     def _parse_MV(self, resp: str) -> None:
         level = only_int(resp)
 
         if level:
-            if len(level)>2:
-                level=int(level)/10
+            if len(level) > 2:
+                level = int(level) / 10
             else:
-                level=float(level)
+                level = float(level)
 
             if resp.startswith("MAX"):
                 self.maxvol = level
@@ -522,16 +552,16 @@ class MDAVR:
                 if self.status[lbl] != level:
                     self.status[lbl] = level
                     if self.notify:
-                        self.notify(lbl,self.status[lbl])
+                        self.notify(lbl, self.status[lbl])
 
     def _parse_PW(self, resp: str) -> None:
-        self._parse_many("PW",resp)
+        self._parse_many("PW", resp)
 
     def _parse_ECO(self, resp: str) -> None:
-        self._parse_many("ECO",resp)
+        self._parse_many("ECO", resp)
 
     def _parse_SI(self, resp: str) -> None:
-        self._parse_many("SI",resp)
+        self._parse_many("SI", resp)
 
     def _parse_MU(self, resp: str) -> None:
         nval = resp == "ON"
@@ -539,15 +569,15 @@ class MDAVR:
         if self.status[lbl] != nval:
             self.status[lbl] = nval
             if self.notify:
-                self.notify(lbl,self.status[lbl])
+                self.notify(lbl, self.status[lbl])
 
     def _parse_CV(self, resp: str) -> None:
         """ Different here... Needs to be reset"""
-        if resp=="END":
+        if resp == "END":
             self.cvend = True
             if self.notify:
                 lbl = self.CMDS_DEFS["CV"].label
-                self.notify(lbl,self.status[lbl])
+                self.notify(lbl, self.status[lbl])
         else:
             if self.cvend:
                 self.status[self.CMDS_DEFS["CV"].label] = {}
@@ -555,10 +585,10 @@ class MDAVR:
             spkr, level = resp.split(" ")
 
             if level:
-                if len(level)>2:
-                    level=int(level)/10
+                if len(level) > 2:
+                    level = int(level) / 10
                 else:
-                    level=float(level)
+                    level = float(level)
             level -= 50
             for x in self.CMDS_DEFS["CV"].values:
                 if x.value == spkr:
@@ -576,21 +606,21 @@ class MDAVR:
 
         resp = resp.replace("+", " ")
         resp = " ".join([x.title() for x in resp.split(" ")])
-        for old,new in SSTRANSFORM:
-            resp = resp.replace(old,new)
-        #Clean up spaces
-        resp = re.sub(r'[_\W]+', ' ', resp)
+        for old, new in SSTRANSFORM:
+            resp = resp.replace(old, new)
+        # Clean up spaces
+        resp = re.sub(r"[_\W]+", " ", resp)
         lbl = self.CMDS_DEFS["MS"].label
         if self.status[lbl] != resp:
-            self.status[lbl]=resp
+            self.status[lbl] = resp
             if self.notify:
-                self.notify(lbl,self.status[lbl])
+                self.notify(lbl, self.status[lbl])
 
-    def _clean_fut(self,fut):
+    def _clean_fut(self, fut):
         for idx in range(len(self.queue)):
             if self.queue[idx][1] == fut:
                 self.queue[idx][1].cancel()
-                del(self.queue[idx])
+                del self.queue[idx]
                 break
 
     async def _do_read(self):
@@ -598,13 +628,15 @@ class MDAVR:
 
         asyncio.get_event_loop().create_task(self.refresh())
         while self.alive:
-            data =b''
-            while not data or data[-1] != ord('\r'):
+            data = b""
+            while not data or data[-1] != ord("\r"):
                 if self.queue:
                     try:
-                        data += await asyncio.wait_for(self._reader.read(1), self._timeout)
+                        data += await asyncio.wait_for(
+                            self._reader.read(1), self._timeout
+                        )
                     except asyncio.TimeoutError:
-                        #Gone
+                        # Gone
                         self.alive = False
                         self._writer.close()
                         await self._writer.wait_close()
@@ -619,5 +651,5 @@ class MDAVR:
                 cmd, fut = self.queue[idx]
                 if cmd == match:
                     fut.set_result(True)
-                    del(self.queue[idx])
+                    del self.queue[idx]
                     break

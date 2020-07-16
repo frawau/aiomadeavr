@@ -314,7 +314,7 @@ The channel bias list may get out of sync when setting the sound mode to 'Auto'.
 
 The module uses asyncio Streams. I think using protocols may have been a wiser choice.
 
-Currently, most of the coroutine of the MDAVR object generate a future and wait for it. Not sure it is a good idea. May be removed in the future.
+Currently, most of the coroutine of the MDAVR object generate a future and wait for it. Not sure it is a good idea. May be removed in the future. Oh, wait!
 
 
 
