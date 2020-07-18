@@ -115,13 +115,11 @@ Maximum of the volume range.
 
 Current source of the device, for instance Bluray, CD, Set Top Box,...
 
-Not all sources are available to all devices.
-
 ### List Attr: source_list
 
 List of all the possible sources. When setting a source, the name MUST BE in this list.
 
-Not all sources are available to all devices.
+Not all sources are available to all devices. aiomadeave will try to get the list of inputs available to the device.
 
 ### String Attr: sound_mode
 
@@ -132,6 +130,16 @@ Current sound processing mode, for instance: Stereo, DTS, Pure Direct,...
 List of all the possible sound_mode. When setting a sound_mode, the name MUST BE in this list.
 
 Not all sound_mode are available to all devices.
+
+### String Attr: picture_mode
+
+Current video processing mode, for instance: Custum, Vivid, ISF Day,...
+
+### List Attr: picture_mode_list
+
+List of all the possible picture_mode. When setting a picture_mode, the name MUST BE in this list.
+
+Not all picture_mode are available to all devices.
 
 ### String Attr: eco_mode
 
@@ -154,19 +162,19 @@ List of all the possible channels for which a bias can be set. When setting a ch
 
 Note that this list is dynamic has it depends on the sound mode. Values are like: Front Right, Surrond Left,...
 
-### Coroutine: refresh
+### Method: refresh
 
 No parameter.
 
 Ask the device to query its current status. Returns None but may raise AvrTimeoutError.
 
-### Coroutine: turn_on
+### Method: turn_on
 
 No parameter.
 
 Turn on the device. Returns None but may raise AvrTimeoutError.
 
-### Coroutine: turn_off
+### Method: turn_off
 
 No parameter.
 
@@ -174,7 +182,7 @@ Turn off the device. Returns None but may raise AvrTimeoutError
 
 Note that the associated value is "Standby". It may be "Off" for some devices.
 
-### Coroutine: mute_volume
+### Method: mute_volume
 
 One parameter:
 
@@ -182,7 +190,7 @@ One parameter:
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: set_volume
+### Method: set_volume
 
 One parameter:
 
@@ -193,7 +201,7 @@ Set the volume level.
 Returns None but may raise AvrTimeoutError.
 
 
-### Coroutine: volume_up
+### Method: volume_up
 
 No parameter.
 
@@ -201,7 +209,7 @@ Raise the volume level by 0.5
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: volume_down
+### Method: volume_down
 
 No parameter.
 
@@ -209,7 +217,7 @@ Lower the volume level by 0.5
 
 Returns None but may raise AvrTimeoutError \.
 
-### Coroutine: set_channel_bias
+### Method: set_channel_bias
 
 Two parameter:
 
@@ -220,7 +228,7 @@ Set the bias level for the specified channel.
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: channel_bias_up
+### Method: channel_bias_up
 
 One parameter:
 
@@ -230,7 +238,7 @@ Raises the bias level for the specified channel by 0.5
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: channel_bias_down
+### Method: channel_bias_down
 
 One parameter:
 
@@ -240,7 +248,7 @@ Lower the bias level for the specified channel by 0.5
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: channel_bias_reset
+### Method: channel_bias_reset
 
 No parameter.
 
@@ -248,7 +256,7 @@ Reset all the channels' bias to 0.0
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: select_source
+### Method: select_source
 
 One parameter:
 
@@ -258,7 +266,7 @@ Make the source the current active one for the Main Zone
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: select_sound_mode
+### Method: select_sound_mode
 
 One parameter:
 
@@ -270,7 +278,17 @@ in the status may not be the same as the one set. For instance, setting 'Auto' m
 
 Returns None but may raise AvrTimeoutError.
 
-### Coroutine: select_eco_mode
+### Method: select_picture_mode
+
+One parameter:
+
+    mode: The mode name. Must be in picture_mode_list
+
+Set the picture mode for the active zone.
+
+Returns None but may raise AvrTimeoutError.
+
+### Method: select_eco_mode
 
 One parameter:
 
@@ -316,11 +334,9 @@ The channel bias list may get out of sync when setting the sound mode to 'Auto'.
 
 The module uses asyncio Streams. I think using protocols may have been a wiser choice.
 
-Currently, most of the coroutine of the MDAVR object generate a future and wait for it. Not sure it is a good idea. May be removed in the future. Oh, wait!
+~~Currently, most of the coroutine of the MDAVR object generate a future and wait for it. Not sure it is a good idea. May be removed in the future. Oh, wait!~~
 
-
-
-
+All that silly use of future has now been cleaned up.
 
 
 

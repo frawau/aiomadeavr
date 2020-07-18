@@ -33,9 +33,17 @@ import logging
 import re
 from enum import Enum
 from typing import Any, List, Mapping, Optional, Callable
-from .enums import InputSource, Power, SurroundMode, ChannelBias, EcoMode, AudioInput
+from .enums import (
+    InputSource,
+    Power,
+    SurroundMode,
+    ChannelBias,
+    EcoMode,
+    AudioInput,
+    PictureMode,
+)
 
-# Some replacement for the surrond sound format
+# Some replacement for the surround sound format
 SSTRANSFORM = [
     ("Audio-", " "),
     ("Dd", "Dolby Digital "),
@@ -45,6 +53,7 @@ SSTRANSFORM = [
     ("Dsur", "Digital Surround "),
     ("Mtrx", "Matrix"),
     ("Dscrt", "Discrete "),
+    ("Mch", "Multi-Channel "),
     (" Es ", " ES "),
 ]
 EXTRAS = ["SSINFAI"]
@@ -129,7 +138,9 @@ class MDAVR:
         "SI": _CommandDef("Source", InputSource),
         "MS": _CommandDef("Surround Mode", SurroundMode),
         "CV": _CommandDef("Channel Bias", ChannelBias),
+        "PV": _CommandDef("Picture Mode", PictureMode),
         "ECO": _CommandDef("Eco Mode", EcoMode),
+        "SSSOD": _CommandDef("Available Source", InputSource),
     }
 
     _reader: asyncio.StreamReader
@@ -150,13 +161,25 @@ class MDAVR:
         self.status = {}
         self.maxvol = 98  # Good default ;)
         self.alive = True
-        self.queue = []
+        self.write_queue = asyncio.Queue()
         for x in self.CMDS_DEFS:
-            self.status[self.CMDS_DEFS[x].label] = "-"
+            if len(x) < 5:
+                self.status[self.CMDS_DEFS[x].label] = "-"
         self.cvend = True
         self.notify = None
+        self.mysources = []
         # Start reading
+        self.wtask = asyncio.get_event_loop().create_task(self._do_write())
         self.rtask = asyncio.get_event_loop().create_task(self._do_read())
+        self._get_capabilities()
+        self.refresh()
+
+    def _get_capabilities(self):
+        """
+        Here we try to get the various capabilities of the device connected.
+        """
+        # Let's get the available Sources
+        self.write_queue.put_nowait(("SSSOD", " ?"))
 
     def _get_current(self, cmd):
         return self.status[self.CMDS_DEFS[cmd].label]
@@ -193,6 +216,8 @@ class MDAVR:
     @property
     def source_list(self) -> List[str]:
         """List of available input sources."""
+        if self.mysources:
+            return self.mysources
         return self._get_list("SI")
 
     @property
@@ -204,6 +229,16 @@ class MDAVR:
     def sound_mode_list(self) -> List[str]:
         """List of available sound modes."""
         return self._get_list("MS")
+
+    @property
+    def picture_mode(self) -> str:
+        """Name of the current sound mode."""
+        return self._get_current("PV")
+
+    @property
+    def picture_mode_list(self) -> List[str]:
+        """List of available sound modes."""
+        return self._get_list("PV")
 
     @property
     def eco_mode(self) -> str:
@@ -224,49 +259,29 @@ class MDAVR:
         """List of currently available."""
         return [x for x in self._get_current("CV").keys()]
 
-    async def refresh(self) -> None:
+    def refresh(self) -> None:
         """Refresh all properties from the AVR."""
 
         for cmd_def in self.CMDS_DEFS:
-            fut = await self._send_command(cmd_def, "?")
-            try:
-                await self._wait_for_response_with_timeout(fut)
-            except asyncio.TimeoutError:
-                self._clean_fut(fut)
-                raise AvrTimeoutError
+            fut = self.write_queue.put_nowait((cmd_def, "?"))
 
-    async def turn_on(self) -> None:
+    def turn_on(self) -> None:
         """Turn the AVR on."""
-        fut = await self._send_command("PW", "ON")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("PW", "ON"))
 
-    async def turn_off(self) -> None:
+    def turn_off(self) -> None:
         """Turn the AVR off."""
-        fut = await self._send_command("PW", "STANDBY")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("PW", "STANDBY"))
 
-    async def mute_volume(self, mute: bool) -> None:
+    def mute_volume(self, mute: bool) -> None:
         """Mute or unmute the volume.
 
         Arguments:
         mute -- True to mute, False to unmute.
         """
-        fut = await self._send_command("MU", _on_off_from_bool(mute))
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("MU", _on_off_from_bool(mute)))
 
-    async def set_volume(self, level: float) -> None:
+    def set_volume(self, level: float) -> None:
         """Set the volume level.
 
         Arguments:
@@ -279,32 +294,17 @@ class MDAVR:
             level = int(5 * round(10 * level / 5))
         else:
             level = int(level)
-        fut = await self._send_command("MV", f"{level:02}")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("MV", f"{level:02}"))
 
-    async def volume_up(self) -> None:
+    def volume_up(self) -> None:
         """Turn the volume level up one notch."""
-        fut = await self._send_command("MV", "UP")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("MV", "UP"))
 
-    async def volume_down(self) -> None:
+    def volume_down(self) -> None:
         """Turn the volume level down one notch."""
-        fut = await self._send_command("MV", "DOWN")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+        self.write_queue.put_nowait(("MV", "DOWN"))
 
-    async def set_channel_bias(self, chan: str, level: float) -> None:
+    def set_channel_bias(self, chan: str, level: float) -> None:
         """Set the volume level.
 
         Arguments:
@@ -313,7 +313,6 @@ class MDAVR:
         """
         if chan not in self.channels_bias:
             logging.warning(f"Channel {chan} is not available right now.")
-            await asyncio.sleep(0)
             return
 
         if self.channels_bias[chan] != level:
@@ -335,27 +334,20 @@ class MDAVR:
                     cmd = x.value
                     break
             if cmd:
-                fut = await self._send_command("CV", f"{cmd} {level:02}")
-                try:
-                    await self._wait_for_response_with_timeout(fut)
-                except asyncio.TimeoutError:
-                    self._clean_fut(fut)
-                    raise AvrTimeoutError
+                self.write_queue.put_nowait(("CV", f"{cmd} {level:02}"))
             else:
                 logging.error(
                     f"Channel {chan} should exist. This should not have happened."
                 )
 
-    async def channel_bias_up(self, chan: str) -> None:
+    def channel_bias_up(self, chan: str) -> None:
         """Turn the volume level up one notch."""
         if chan not in self.channels_bias:
             logging.warning(f"Channel {chan} is not available right now.")
-            await asyncio.sleep(0)
             return
         if self.channels_bias[chan] == 12:
             # We are at the limit. It won't respond
             logging.debugf(f"Channel {chan} it at the upper limit.")
-            await asyncio.sleep(0)
             return
 
         chan = chan.replace(" ", "")
@@ -365,27 +357,20 @@ class MDAVR:
                 cmd = x.value
                 break
         if cmd:
-            fut = await self._send_command("CV", f"cmd UP")
-            try:
-                await self._wait_for_response_with_timeout(fut)
-            except asyncio.TimeoutError:
-                self._clean_fut(fut)
-                raise AvrTimeoutError
+            self.write_queue.put_nowait(("CV", f"{cmd} UP"))
         else:
             logging.error(
                 f"Channel {chan} should exist. This should not have happened."
             )
 
-    async def channel_bias_down(self, chan: str) -> None:
+    def channel_bias_down(self, chan: str) -> None:
         """Turn the volume level down one notch."""
         if chan not in self.channels_bias:
             logging.warning(f"Channel {chan} is not available right now.")
-            await asyncio.sleep(0)
             return
         if self.channels_bias[chan] == -12:
             # We are at the limit. It won't respond
             logging.debugf(f"Channel {chan} it at the lowewr limit.")
-            await asyncio.sleep(0)
             return
 
         chan = chan.replace(" ", "")
@@ -395,70 +380,50 @@ class MDAVR:
                 cmd = x.value
                 break
         if cmd:
-            fut = await self._send_command("CV", f"{cmd} DOWN")
-            try:
-                await self._wait_for_response_with_timeout(fut)
-            except asyncio.TimeoutError:
-                self._clean_fut(fut)
-                raise AvrTimeoutError
+            self.write_queue.put_nowait(("CV", f"{cmd} DOWN"))
         else:
             logging.error(
                 f"Channel {chan} should exist. This should not have happened."
             )
 
-    async def channels_bias_reset(self):
-        fut = await self._send_command("CV", "ZRL")
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            self._clean_fut(fut)
-            raise AvrTimeoutError
+    def channels_bias_reset(self):
+        self.write_queue.put_nowait(("CV", "ZRL"))
 
-    async def select_source(self, source: str) -> None:
+    def select_source(self, source: str) -> None:
         """Select the input source."""
         try:
             source = self.CMDS_DEFS["SI"].values[source.replace(" ", "")]
         except:
             logging.warning(f"Warning: {source} is not a valid source")
-            await asyncio.sleep(0)
             return
-        fut = await self._send_command("SI", source.value)
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except asyncio.TimeoutError:
-            # Source might not be available
-            logging.warning(
-                f"Warning: {source} may not be a valid source for this device."
-            )
-            self._clean_fut(fut)
+        self.write_queue.put_nowait(("SI", source.value))
 
-    async def select_sound_mode(self, mode: str) -> None:
+    def select_sound_mode(self, mode: str) -> None:
         """Select the sound mode."""
         try:
             mode = self.CMDS_DEFS["MS"].values[mode.replace(" ", "")]
         except:
             logging.warning(f"Warning: {mode} is not a valid mode")
-            await asyncio.sleep(0)
             return
-        fut = await self._send_command("MS", mode.value)
-        try:
-            await self._wait_for_response_with_timeout(fut)
-        except:
-            logging.warning(
-                f"Warning: {mode} may not be a valid surround mode for this device."
-            )
-            self._clean_fut(fut)
+        self.write_queue.put_nowait(("MS", mode.value))
 
-    async def select_eco_mode(self, mode: str) -> None:
+    def select_picture_mode(self, mode: str) -> None:
         """Select the sound mode."""
         try:
-            mode = SurroundMode[mode]
+            mode = self.CMDS_DEFS["PV"].values[mode.replace(" ", "")]
+        except:
+            logging.warning(f"Warning: {mode} is not a valid mode")
+            return
+        self.write_queue.put_nowait(("PV", mode.value))
+
+    def select_eco_mode(self, mode: str) -> None:
+        """Select the sound mode."""
+        try:
+            mode = self.CMDS_DEFS["ECO"].values[mode.replace(" ", "").title()]
         except:
             logging.warning(f"Warning: {mode} is not a valid eco  mode")
-            await asyncio.sleep(0)
             return
-        fut = await self._send_command("ECO", mode.value)
-        await self._wait_for_response_with_timeout(fut)
+        self.write_queue.put_nowait(("ECO", mode.value))
 
     def notifyme(self, func: Callable) -> None:
         """Register a callback for when an event happens. The callable should have 2 parameters,
@@ -470,30 +435,17 @@ class MDAVR:
         self.alive = False
         self._writer.close()
         self.rtask.cancel()
+        self.wtask.cancel()
+        logging.debug(f"Closed device {self.name}")
 
     # API ends here
 
     async def _send_command(self, cmd: str, val: Any) -> asyncio.Future:
-        loop = asyncio.get_event_loop()
-        fut = loop.create_future()
-        self.queue.append([cmd, fut])
         tosend = f"{cmd}{val}\r"
         logging.debug(f"Sending {tosend}")
         self._writer.write(tosend.encode())
         await self._writer.drain()
-        return fut
-
-    async def _with_timeout(self, fut) -> Optional[Any]:
-        try:
-            return await asyncio.wait_for(fut, self._timeout)
-        except asyncio.TimeoutError:
-            raise AvrTimeoutError
-
-    async def _wait_for_response_with_timeout(self, fut: asyncio.Future) -> None:
-        await self._with_timeout(self._wait_for_response(fut))
-
-    async def _wait_for_response(self, fut: asyncio.Future) -> None:
-        await fut
+        logging.debug("Write drained")
 
     def _process_response(self, response: str) -> Optional[str]:
         matches = [cmd for cmd in self.CMDS_DEFS.keys() if response.startswith(cmd)] + [
@@ -521,7 +473,10 @@ class MDAVR:
                         sr = float(sr)
                     self.status["Sampling Rate"] = sr
                 except Exception as e:
-                    logging.debug(f"Error with sampling rate: {e}")
+                    if response.split(" ")[-1] == "NON":
+                        elf.status["Sampling Rate"] = "-"
+                    else:
+                        logging.debug(f"Error with sampling rate: {e}")
             else:
                 logging.warning(f"Warning _parse_{match} is not defined.")
 
@@ -563,6 +518,9 @@ class MDAVR:
     def _parse_SI(self, resp: str) -> None:
         self._parse_many("SI", resp)
 
+    def _parse_PV(self, resp: str) -> None:
+        self._parse_many("PV", resp)
+
     def _parse_MU(self, resp: str) -> None:
         nval = resp == "ON"
         lbl = self.CMDS_DEFS["MU"].label
@@ -599,6 +557,19 @@ class MDAVR:
             except:
                 logging.debug(f"Unknown speaker code {spkr}")
 
+    def _parse_SSSOD(self, resp: str) -> None:
+        """ Different here..."""
+        if resp == " END":
+            self.mysources.sort()
+            logging.debug(f"My source is now {self.mysources}")
+            return
+        si, f = resp.split(" ")
+        if f == "USE":
+            for x in self.CMDS_DEFS["SSSOD"].values:
+                if si == x.value:
+                    self.mysources.append(cc_string(x.name))
+                    break
+
     def _parse_MS(self, resp: str) -> None:
         """ Different here... What we get is not what we send. So we try to transform
         the result through semi-cllever string manipulation
@@ -616,40 +587,30 @@ class MDAVR:
             if self.notify:
                 self.notify(lbl, self.status[lbl])
 
-    def _clean_fut(self, fut):
-        for idx in range(len(self.queue)):
-            if self.queue[idx][1] == fut:
-                self.queue[idx][1].cancel()
-                del self.queue[idx]
-                break
-
     async def _do_read(self):
         """ Keep on reading the info coming from the AVR"""
 
-        asyncio.get_event_loop().create_task(self.refresh())
         while self.alive:
             data = b""
             while not data or data[-1] != ord("\r"):
-                if self.queue:
-                    try:
-                        data += await asyncio.wait_for(
-                            self._reader.read(1), self._timeout
-                        )
-                    except asyncio.TimeoutError:
-                        # Gone
-                        self.alive = False
-                        self._writer.close()
-                        await self._writer.wait_close()
-                        break
-                else:
-                    data += await self._reader.read(1)
+                char = await self._reader.read(1)
+                if char == b"":
+                    break
+                data += char
+
+            if data == b"":
+                # Gone
+                self.close()
+                return
 
             logging.debug(f"Received: {data}")
             match = self._process_response(data.decode().strip("\r"))
 
-            for idx in range(len(self.queue)):
-                cmd, fut = self.queue[idx]
-                if cmd == match:
-                    fut.set_result(True)
-                    del self.queue[idx]
-                    break
+    async def _do_write(self):
+        """ Keep on reading the info coming from the AVR"""
+
+        while self.alive:
+            cmd, param = await self.write_queue.get()
+            if cmd:
+                await self._send_command(cmd, param)
+            self.write_queue.task_done()

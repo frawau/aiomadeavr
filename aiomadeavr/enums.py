@@ -132,3 +132,15 @@ class SurroundMode(Enum):
     # Rotate between options
     Left = "LEFT"
     Right = "RIGHT"
+
+
+class PictureMode(Enum):
+    # Settable values
+    Off = "OFF"
+    Standard = "STD"
+    Movie = "MOV"
+    Vivid = "VVD"
+    Stream = "STM"
+    Custom = "CTM"
+    ISFDay = "DAY"
+    ISFNight = "NGT"

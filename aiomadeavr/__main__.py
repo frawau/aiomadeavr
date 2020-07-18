@@ -97,7 +97,7 @@ def readin():
                         sel = int(lov[0]) - 1
                         if sel >= 0 and sel < len(loi):
                             source = loi[sel]
-                            aio.create_task(MyDevices.doi.select_source(source))
+                            MyDevices.doi.select_source(source)
                         else:
                             print("\nError: Source selection incorrect.\n")
                     except:
@@ -109,7 +109,7 @@ def readin():
                         sel = int(lov[0]) - 1
                         if sel >= 0 and sel < len(loi):
                             mode = loi[sel]
-                            aio.create_task(MyDevices.doi.select_sound_mode(mode))
+                            MyDevices.doi.select_sound_mode(mode)
                         else:
                             print("\nError: Surround Mode  selection incorrect.\n")
                     except:
@@ -120,23 +120,31 @@ def readin():
                     try:
                         sel = int(lov[0]) - 1
                         if sel == len(loi):
-                            aio.create_task(MyDevices.doi.channels_bias_reset())
+                            MyDevices.doi.channels_bias_reset()
                         elif sel >= 0 and sel < len(loi):
                             if lov[1].lower() == "up":
-                                aio.create_task(MyDevices.doi.channel_bias_up(loi[sel]))
+                                MyDevices.doi.channel_bias_up(loi[sel])
                             elif lov[1].lower() == "down":
-                                aio.create_task(
-                                    MyDevices.doi.channel_bias_down(loi[sel])
-                                )
+                                MyDevices.doi.channel_bias_down(loi[sel])
                             else:
                                 level = float(lov[1])
-                                aio.create_task(
-                                    MyDevices.doi.set_channel_bias(loi[sel], level)
-                                )
+                                MyDevices.doi.set_channel_bias(loi[sel], level)
                     except:
                         print(
                             "\nError: Channel Bias meeds a channel and a level (float, up or down).\n"
                         )
+                elif MyDevices.secondary == "picture":
+                    loi = MyDevices.doi.picture_mode_list
+                    loi.sort()
+                    try:
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
+                            mode = loi[sel]
+                            MyDevices.doi.select_picture_mode(mode)
+                        else:
+                            print("\nError: Picture mode selection incorrect.\n")
+                    except:
+                        print("\nError: Picture mode selection must be a number.\n")
 
                 MyDevices.doi = None
                 MyDevices.secondary = None
@@ -148,27 +156,25 @@ def readin():
                 elif int(lov[0]) == 1:
                     if len(lov) > 1:
                         if lov[1].lower() in ["1", "on", "true"]:
-                            aio.create_task(MyDevices.doi.turn_on())
+                            MyDevices.doi.turn_on()
                         else:
-                            aio.create_task(MyDevices.doi.turn_off())
+                            MyDevices.doi.turn_off()
                         MyDevices.doi = None
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
-                    aio.create_task(
-                        MyDevices.doi.mute_volume(not MyDevices.doi.is_volume_muted)
-                    )
+                    MyDevices.doi.mute_volume(not MyDevices.doi.is_volume_muted)
                     MyDevices.doi = None
                 elif int(lov[0]) == 3:
                     if len(lov) > 1:
                         if lov[1].lower() == "up":
-                            aio.create_task(MyDevices.doi.volume_up())
+                            MyDevices.doi.volume_up()
                         elif lov[1].lower() == "down":
-                            aio.create_task(MyDevices.doi.volume_down())
+                            MyDevices.doi.volume_down()
                         else:
                             try:
                                 lvl = float(lov[1])
-                                aio.create_task(MyDevices.doi.set_volume(lvl))
+                                MyDevices.doi.set_volume(lvl)
                             except:
                                 print(f"Error: {lov[1]} is not a float.")
                                 print(
@@ -208,8 +214,25 @@ def readin():
                         print(f"\t[{idx}]\t{src} <level>|up|down")
                         idx += 1
                     print(f"\t[{idx}]\tReset all channels")
-
                 elif int(lov[0]) == 7:
+                    MyDevices.secondary = "picture"
+                    los = MyDevices.doi.picture_mode_list
+                    los.sort()
+                    print("Select picture mode for {}:".format(MyDevices.doi.name))
+                    idx = 1
+                    for src in los:
+                        print(f"\t[{idx}]\t{src}")
+                        idx += 1
+
+                elif int(lov[0]) == 8:
+                    if lov[1].strip().lower() in ["on", "off", "auto"]:
+                        MyDevices.doi.select_eco_mode(lov[1].strip())
+                    else:
+                        print(
+                            "\nError: Eco mode must be one of 'on', 'off' or 'auto'..\n"
+                        )
+                    MyDevices.doi = None
+                elif int(lov[0]) == 9:
                     print(f"Status for {MyDevices.doi.name}")
                     quick_print(MyDevices.doi.status)
                     MyDevices.doi = None
@@ -235,7 +258,9 @@ def readin():
             print("\t[4]\tSource")
             print("\t[5]\tSurround Mode")
             print("\t[6]\tChannel Bias")
-            print("\t[7]\tInfo")
+            print("\t[7]\tPicture Mode")
+            print("\t[8]\tEco mode (on|off|auto)")
+            print("\t[9]\tInfo")
             print("")
             print("\t[0]\tBack to device selection")
     else:
@@ -279,7 +304,7 @@ else:
     logging.basicConfig(level=logging.ERROR)
 
 
-MyDevices = devices(opts.debug)
+MyDevices = devices(opts.debug or opts.verbose)
 loop = aio.get_event_loop()
 loop.run_until_complete(avr.start_discovery(callb=MyDevices.register))
 try:
