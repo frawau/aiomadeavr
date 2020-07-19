@@ -84,6 +84,9 @@ class InputSource(Enum):
     HDRadio = "HDRADIO"
     SiriusXM = "SIRIUSXM"
     Pandora = "PANDORA"
+    LastFM = "LASTFM"
+    Flickr = "FLICKR"
+    Spotify = "SPOTIFY"
     InternetRadio = "IRADIO"
     Server = "SERVER"
     Favourites = "FAVORITES"
@@ -96,6 +99,11 @@ class InputSource(Enum):
     Aux7 = "AUX7"
     OnlineMusic = "NET"
     Bluetooth = "BT"
+    MXPORT = "MXPORT"
+    USB = "USB"
+    IPODDirect = "IPOD DIRECT"
+    IPOD = "IPOD"
+    USBIPOD = "USB/IPOD"
 
 
 class AudioInput(Enum):

@@ -61,7 +61,7 @@ Parameters are:
 These 2 are required, there are also 2 optional parameters:
 
     port: The port to connect to. An integer. Default is 23
-    timeout: A timeout, in seconds, for communicatiojn with the device. A float, default 3.0
+    timeout: A timeout,currently not used default 3.0
 
 If anything goes wrong, avr_factory will return None. If things go right, it will return an MDAVR object
 
@@ -82,36 +82,57 @@ The friendly name of the device. This was passed to avr_factory at creation time
 
 ### Dictionary Attr: status
 
-Current status of the device. Below is a pretty printed example:
+Current status of the device. Below is a pretty printed example from a marantz SR7013:
 
-        Power:  On
-        Mute:   False
-        Volume: 68.0
-        Source: Bluray
-        Surround Mode:  Stereo
-        Channel Bias:
-                Front Left:     0.0
-                Front Right:    0.0
-        Eco Mode:       Off
+    Power:  On
+    Main Zone:      On
+    Zone 2: Off
+    Zone 3: Off
+    Muted:  False
+    Z2 Muted:       False
+    Z3 Muted:       False
+    Volume: 50.0
+    Z2 Volume:      50.0
+    Z3 Volume:      1.0
+    Source: Bluray
+    Z2 Source:      -
+    Z3 Source:      Online Music
+    Surround Mode:  Dolby Digital Surround
+    Channel Bias:
+        Front Left:     0.0
+        Front Right:    0.0
+        Centre: 0.0
+        Subwoofer:      0.0
+        Surround Left:  0.0
+        Surround Right: 0.0
+        Subwoofer2:     0.0
+        Front Top Left: 0.0
+        Front Top Right:        0.0
+        Rear Top Left:  0.0
+        Rear Top Right: 0.0
+    Picture Mode:   ISF Day
+    Eco Mode:       Auto
+    Sampling Rate:  192.0
 
 
-### String Attr: power
 
-Current status status of the device, one of 'On' or 'Standby'
+### String Attr: power, main_power, z2_power, z3_power
 
-### Bool Attr: muted
+Current status status of the device, one of 'On' or 'Standby', for 'power', "On' or 'Off" for the others.
+
+### Bool Attr: muted, z2_muted, z3_muted
 
 Current "muted" status of the device: True or False
 
-### Float Attr: volume
+### Float Attr: volume, z2_volume, z3_volume
 
-Current master volume of the device. From 0.0 to max_volume by 0,5 increments
+Current zone volume of the device. From 0.0 to max_volume by 0,5 increments
 
 ### Float Attr: max_volume
 
 Maximum of the volume range.
 
-### String Attr: source
+### String Attr: source, z2_source, z3_source
 
 Current source of the device, for instance Bluray, CD, Set Top Box,...
 
@@ -166,56 +187,56 @@ Note that this list is dynamic has it depends on the sound mode. Values are like
 
 No parameter.
 
-Ask the device to query its current status. Returns None but may raise AvrTimeoutError.
+Ask the device to query its current status. Returns None.
 
-### Method: turn_on
-
-No parameter.
-
-Turn on the device. Returns None but may raise AvrTimeoutError.
-
-### Method: turn_off
+### Method: turn_on, main_tunr_on, z2_turn_on, z3_turn_on
 
 No parameter.
 
-Turn off the device. Returns None but may raise AvrTimeoutError
+Turn on the device/zone. Returns None. 'turn_on' will affect all zones
 
-Note that the associated value is "Standby". It may be "Off" for some devices.
+### Method: turn_off, main_power_off, z2_power_off, z3_poweer_off
 
-### Method: mute_volume
+No parameter.
+
+Turn off the device/zone. Returns None.
+
+Note that the associated value is "Standby" for'power' and "Off" for zones.
+
+### Method: mute_volume, z2_mute_volume, z3_mute_volume
 
 One parameter:
 
     mute: boolean
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
-### Method: set_volume
+### Method: set_volume, z2_set_volume, z3_set_volume
 
 One parameter:
 
-    level: float, valuer between 0.0 and 98.0 in 0.5 increments
+    level: float, valuer between 0.0 and 98.0 in 0.5 increments for main zone and 1.0 increment for other zones.
 
 Set the volume level.
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 
-### Method: volume_up
-
-No parameter.
-
-Raise the volume level by 0.5
-
-Returns None but may raise AvrTimeoutError.
-
-### Method: volume_down
+### Method: volume_up, z2_volume_up, z3_volume_up
 
 No parameter.
 
-Lower the volume level by 0.5
+Raise the volume level by 0.5 for main zone, 1.0 for others
 
-Returns None but may raise AvrTimeoutError \.
+Returns None.
+
+### Method: volume_down, z2_volume_down, z3_volume_down
+
+No parameter.
+
+Lower the volume level by 0.5 for main zone, 1.0 for others
+
+Returns None.\.
 
 ### Method: set_channel_bias
 
@@ -226,7 +247,7 @@ Two parameter:
 
 Set the bias level for the specified channel.
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: channel_bias_up
 
@@ -236,7 +257,7 @@ One parameter:
 
 Raises the bias level for the specified channel by 0.5
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: channel_bias_down
 
@@ -246,7 +267,7 @@ One parameter:
 
 Lower the bias level for the specified channel by 0.5
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: channel_bias_reset
 
@@ -254,9 +275,9 @@ No parameter.
 
 Reset all the channels' bias to 0.0
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
-### Method: select_source
+### Method: select_source, z2_select_source, z3_select_source
 
 One parameter:
 
@@ -264,7 +285,7 @@ One parameter:
 
 Make the source the current active one for the Main Zone
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: select_sound_mode
 
@@ -276,7 +297,7 @@ Set the sound mode for the active zone. The name of the sound mode
 in the status may not be the same as the one set. For instance, setting 'Auto' may lead to a
 'Stereo' mode.
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: select_picture_mode
 
@@ -286,7 +307,7 @@ One parameter:
 
 Set the picture mode for the active zone.
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: select_eco_mode
 
@@ -296,7 +317,7 @@ One parameter:
 
 Set the eco mode for the device.
 
-Returns None but may raise AvrTimeoutError.
+Returns None.
 
 ### Method: notifyme
 
@@ -326,7 +347,11 @@ One parameter:
 
 # Caveat
 
-Trying to set the current value will often result in AvrTimeoutError exception. The device will simply not respond to that and will secretly despise you.
+~~Trying to set the current value will often result in AvrTimeoutError exception.~~
+
+The device will simply not respond to unknown commands and will secretly despise you for it. This makes it difficullt to use timeout on sending to detect disconnection.
+
+
 
 The channel bias list may get out of sync when setting the sound mode to 'Auto'. It looks like there is a delay before that information is sent.
 

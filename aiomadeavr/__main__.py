@@ -102,6 +102,30 @@ def readin():
                             print("\nError: Source selection incorrect.\n")
                     except:
                         print("\nError: Source selection must be a number.\n")
+                elif MyDevices.secondary == "z2source":
+                    loi = MyDevices.doi.source_list
+                    loi.sort()
+                    try:
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
+                            source = loi[sel]
+                            MyDevices.doi.z2_select_source(source)
+                        else:
+                            print("\nError: Source selection incorrect.\n")
+                    except:
+                        print("\nError: Source selection must be a number.\n")
+                elif MyDevices.secondary == "z3source":
+                    loi = MyDevices.doi.source_list
+                    loi.sort()
+                    try:
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
+                            source = loi[sel]
+                            MyDevices.doi.z3_select_source(source)
+                        else:
+                            print("\nError: Source selection incorrect.\n")
+                    except:
+                        print("\nError: Source selection must be a number.\n")
                 elif MyDevices.secondary == "surround":
                     loi = MyDevices.doi.sound_mode_list
                     loi.sort()
@@ -163,9 +187,42 @@ def readin():
                     else:
                         print("Error: For power you must indicate on or off\n")
                 elif int(lov[0]) == 2:
-                    MyDevices.doi.mute_volume(not MyDevices.doi.is_volume_muted)
-                    MyDevices.doi = None
+                    if len(lov) > 1:
+                        if lov[1].lower() in ["1", "on", "true"]:
+                            MyDevices.doi.main_turn_on()
+                        else:
+                            MyDevices.doi.main_turn_off()
+                        MyDevices.doi = None
+                    else:
+                        print("Error: For zone main  you must indicate on or off\n")
                 elif int(lov[0]) == 3:
+                    if len(lov) > 1:
+                        if lov[1].lower() in ["1", "on", "true"]:
+                            MyDevices.doi.z2_turn_on()
+                        else:
+                            MyDevices.doi.z2_turn_off()
+                        MyDevices.doi = None
+                    else:
+                        print("Error: For zone 2 power you must indicate on or off\n")
+                elif int(lov[0]) == 4:
+                    if len(lov) > 1:
+                        if lov[1].lower() in ["1", "on", "true"]:
+                            MyDevices.doi.z3_turn_on()
+                        else:
+                            MyDevices.doi.z3_turn_off()
+                        MyDevices.doi = None
+                    else:
+                        print("Error: For zone 3 power you must indicate on or off\n")
+                elif int(lov[0]) == 5:
+                    MyDevices.doi.mute_volume(not MyDevices.doi.muted)
+                    MyDevices.doi = None
+                elif int(lov[0]) == 6:
+                    MyDevices.doi.z2_mute_volume(not MyDevices.doi.z2_muted)
+                    MyDevices.doi = None
+                elif int(lov[0]) == 7:
+                    MyDevices.doi.z3_mute_volume(not MyDevices.doi.z3_muted)
+                    MyDevices.doi = None
+                elif int(lov[0]) == 8:
                     if len(lov) > 1:
                         if lov[1].lower() == "up":
                             MyDevices.doi.volume_up()
@@ -186,7 +243,49 @@ def readin():
                         )
                     MyDevices.doi = None
 
-                elif int(lov[0]) == 4:
+                elif int(lov[0]) == 9:
+                    if len(lov) > 1:
+                        if lov[1].lower() == "up":
+                            MyDevices.doi.z2_volume_up()
+                        elif lov[1].lower() == "down":
+                            MyDevices.doi.z2_volume_down()
+                        else:
+                            try:
+                                lvl = float(lov[1])
+                                MyDevices.doi.z2_set_volume(lvl)
+                            except:
+                                print(f"Error: {lov[1]} is not a float.")
+                                print(
+                                    "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                                )
+                    else:
+                        print(
+                            "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                        )
+                    MyDevices.doi = None
+
+                elif int(lov[0]) == 10:
+                    if len(lov) > 1:
+                        if lov[1].lower() == "up":
+                            MyDevices.doi.z3_volume_up()
+                        elif lov[1].lower() == "down":
+                            MyDevices.doi.z3_volume_down()
+                        else:
+                            try:
+                                lvl = float(lov[1])
+                                MyDevices.doi.z3_set_volume(lvl)
+                            except:
+                                print(f"Error: {lov[1]} is not a float.")
+                                print(
+                                    "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                                )
+                    else:
+                        print(
+                            "Error: For volume you must specify 'up', 'down' or a float value.\n"
+                        )
+                    MyDevices.doi = None
+
+                elif int(lov[0]) == 11:
                     MyDevices.secondary = "source"
                     los = MyDevices.doi.source_list
                     los.sort()
@@ -195,7 +294,25 @@ def readin():
                     for src in los:
                         print(f"\t[{idx}]\t{src}")
                         idx += 1
-                elif int(lov[0]) == 5:
+                elif int(lov[0]) == 12:
+                    MyDevices.secondary = "z2source"
+                    los = MyDevices.doi.source_list
+                    los.sort()
+                    print("Select zone 2 source for {}:".format(MyDevices.doi.name))
+                    idx = 1
+                    for src in los:
+                        print(f"\t[{idx}]\t{src}")
+                        idx += 1
+                elif int(lov[0]) == 13:
+                    MyDevices.secondary = "z3source"
+                    los = MyDevices.doi.source_list
+                    los.sort()
+                    print("Select zone 3 source for {}:".format(MyDevices.doi.name))
+                    idx = 1
+                    for src in los:
+                        print(f"\t[{idx}]\t{src}")
+                        idx += 1
+                elif int(lov[0]) == 14:
                     MyDevices.secondary = "surround"
                     los = MyDevices.doi.sound_mode_list
                     los.sort()
@@ -204,7 +321,7 @@ def readin():
                     for src in los:
                         print(f"\t[{idx}]\t{src}")
                         idx += 1
-                elif int(lov[0]) == 6:
+                elif int(lov[0]) == 15:
                     MyDevices.secondary = "channel"
                     los = MyDevices.doi.channels_bias_list
                     los.sort()
@@ -214,7 +331,7 @@ def readin():
                         print(f"\t[{idx}]\t{src} <level>|up|down")
                         idx += 1
                     print(f"\t[{idx}]\tReset all channels")
-                elif int(lov[0]) == 7:
+                elif int(lov[0]) == 16:
                     MyDevices.secondary = "picture"
                     los = MyDevices.doi.picture_mode_list
                     los.sort()
@@ -224,7 +341,7 @@ def readin():
                         print(f"\t[{idx}]\t{src}")
                         idx += 1
 
-                elif int(lov[0]) == 8:
+                elif int(lov[0]) == 17:
                     if lov[1].strip().lower() in ["on", "off", "auto"]:
                         MyDevices.doi.select_eco_mode(lov[1].strip())
                     else:
@@ -232,7 +349,7 @@ def readin():
                             "\nError: Eco mode must be one of 'on', 'off' or 'auto'..\n"
                         )
                     MyDevices.doi = None
-                elif int(lov[0]) == 9:
+                elif int(lov[0]) == 18:
                     print(f"Status for {MyDevices.doi.name}")
                     quick_print(MyDevices.doi.status)
                     MyDevices.doi = None
@@ -253,14 +370,23 @@ def readin():
         if MyDevices.secondary is None:
             print("Select Function for {}:".format(MyDevices.doi.name))
             print("\t[1]\tPower (0 or 1)")
-            print("\t[2]\tToggle Mute")
-            print("\t[3]\tVolume [float val|up|down]")
-            print("\t[4]\tSource")
-            print("\t[5]\tSurround Mode")
-            print("\t[6]\tChannel Bias")
-            print("\t[7]\tPicture Mode")
-            print("\t[8]\tEco mode (on|off|auto)")
-            print("\t[9]\tInfo")
+            print("\t[2]\tMain Zone Power (0 or 1)")
+            print("\t[3]\tZone 2 Power (0 or 1)")
+            print("\t[4]\tZone 3 Power (0 or 1)")
+            print("\t[5]\tToggle Mute")
+            print("\t[6]\tToggle Zone 2 Mute")
+            print("\t[7]\tToggle Zone 3 Mute")
+            print("\t[8]\tVolume [float val|up|down]")
+            print("\t[9]\tZone 2 Volume [float val|up|down]")
+            print("\t[10]\tZone 3 Volume [float val|up|down]")
+            print("\t[11]\tSource")
+            print("\t[12]\tZone 2 Source")
+            print("\t[13]\tZone 3 Source")
+            print("\t[14]\tSurround Mode")
+            print("\t[915\tChannel Bias")
+            print("\t[16]\tPicture Mode")
+            print("\t[17]\tEco mode (on|off|auto)")
+            print("\t[18]\tInfo")
             print("")
             print("\t[0]\tBack to device selection")
     else:

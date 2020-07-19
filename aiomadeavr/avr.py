@@ -133,9 +133,18 @@ class MDAVR:
 
     CMDS_DEFS: Mapping[str, _CommandDef] = {
         "PW": _CommandDef("Power", Power),
-        "MU": _CommandDef("Mute", None),
+        "ZM": _CommandDef("Main Zone", Power),
+        "Z2": _CommandDef("Zone 2", Power),
+        "Z3": _CommandDef("Zone 3", Power),
+        "MU": _CommandDef("Muted", None),
+        "Z2MU": _CommandDef("Z2 Muted", None),
+        "Z3MU": _CommandDef("Z3 Muted", None),
         "MV": _CommandDef("Volume", None),
+        "Z2MV": _CommandDef("Z2 Volume", None),
+        "Z3MV": _CommandDef("Z3 Volume", None),
         "SI": _CommandDef("Source", InputSource),
+        "Z2SI": _CommandDef("Z2 Source", InputSource),
+        "Z3SI": _CommandDef("Z3 Source", InputSource),
         "MS": _CommandDef("Surround Mode", SurroundMode),
         "CV": _CommandDef("Channel Bias", ChannelBias),
         "PV": _CommandDef("Picture Mode", PictureMode),
@@ -194,14 +203,49 @@ class MDAVR:
         return self._get_current("PW")
 
     @property
+    def zmain(self) -> Optional[Power]:
+        """Power state of the AVR."""
+        return self._get_current("ZM")
+
+    @property
+    def z2(self) -> Optional[Power]:
+        """Power state of the AVR."""
+        return self._get_current("Z2")
+
+    @property
+    def z3(self) -> Optional[Power]:
+        """Power state of the AVR."""
+        return self._get_current("Z3")
+
+    @property
     def muted(self) -> Optional[bool]:
         """Boolean if volume is currently muted."""
         return self._get_current("MU")
 
     @property
+    def z2_muted(self) -> Optional[bool]:
+        """Boolean if volume is currently muted."""
+        return self._get_current("Z2MU")
+
+    @property
+    def z3_muted(self) -> Optional[bool]:
+        """Boolean if volume is currently muted."""
+        return self._get_current("Z3MU")
+
+    @property
     def volume(self) -> Optional[float]:
         """Volume level of the AVR zone (00..max_volume)."""
         return self._get_current("MV")
+
+    @property
+    def z2_volume(self) -> Optional[float]:
+        """Volume level of the AVR zone (00..max_volume)."""
+        return self._get_current("Z2MV")
+
+    @property
+    def z2_volume(self) -> Optional[float]:
+        """Volume level of the AVR zone (00..max_volume)."""
+        return self._get_current("Z2MV")
 
     @property
     def max_volume(self) -> Optional[float]:
@@ -212,6 +256,16 @@ class MDAVR:
     def source(self) -> str:
         """Name of the current input source."""
         return self._get_current("SI")
+
+    @property
+    def z2_source(self) -> str:
+        """Name of the current input source."""
+        return self._get_current("Z2SI")
+
+    @property
+    def z2_source(self) -> str:
+        """Name of the current input source."""
+        return self._get_current("Z3SI")
 
     @property
     def source_list(self) -> List[str]:
@@ -273,6 +327,30 @@ class MDAVR:
         """Turn the AVR off."""
         self.write_queue.put_nowait(("PW", "STANDBY"))
 
+    def main_turn_on(self) -> None:
+        """Turn the AVR on."""
+        self.write_queue.put_nowait(("ZM", "ON"))
+
+    def main_turn_off(self) -> None:
+        """Turn the AVR off."""
+        self.write_queue.put_nowait(("ZM", "OFF"))
+
+    def z2_turn_on(self) -> None:
+        """Turn the AVR on."""
+        self.write_queue.put_nowait(("Z2", "ON"))
+
+    def z2_turn_off(self) -> None:
+        """Turn the AVR off."""
+        self.write_queue.put_nowait(("Z2", "OFF"))
+
+    def z3_turn_on(self) -> None:
+        """Turn the AVR on."""
+        self.write_queue.put_nowait(("Z3", "ON"))
+
+    def z3_turn_off(self) -> None:
+        """Turn the AVR off."""
+        self.write_queue.put_nowait(("Z3", "OFF"))
+
     def mute_volume(self, mute: bool) -> None:
         """Mute or unmute the volume.
 
@@ -280,6 +358,30 @@ class MDAVR:
         mute -- True to mute, False to unmute.
         """
         self.write_queue.put_nowait(("MU", _on_off_from_bool(mute)))
+
+    def _zone_mute_volume(self, zone: str, mute: bool) -> None:
+        """Mute or unmute the volume.
+
+        Arguments:
+        mute -- True to mute, False to unmute.
+        """
+        self.write_queue.put_nowait((zone, _on_off_from_bool(mute)))
+
+    def z2_mute_volume(self, mute: bool) -> None:
+        """Mute or unmute the volume.
+
+        Arguments:
+        mute -- True to mute, False to unmute.
+        """
+        self._zone_mute_volume("Z2MU", mute)
+
+    def z3_mute_volume(self, mute: bool) -> None:
+        """Mute or unmute the volume.
+
+        Arguments:
+        mute -- True to mute, False to unmute.
+        """
+        self._zone_mute_volume("Z3MU", mute)
 
     def set_volume(self, level: float) -> None:
         """Set the volume level.
@@ -298,11 +400,43 @@ class MDAVR:
 
     def volume_up(self) -> None:
         """Turn the volume level up one notch."""
-        self.write_queue.put_nowait(("MV", "UP"))
+        self._zone_volume("MV", "UP")
 
     def volume_down(self) -> None:
         """Turn the volume level down one notch."""
-        self.write_queue.put_nowait(("MV", "DOWN"))
+        self._zone_volume("MV", "DOWN")
+
+    def z2_set_volume(self, level: float) -> None:
+        """Set the volume level.
+
+        Arguments:
+        level -- An integer value between 0 and `max_volume`.
+        """
+        self._zone_set_volume("Z2", level)
+
+    def z3_set_volume(self, level: float) -> None:
+        """Set the volume level.
+
+        Arguments:
+        level -- An integer value between 0 and `max_volume`.
+        """
+        self._zone_set_volume("Z3", level)
+
+    def z2_volume_up(self) -> None:
+        """Turn the volume level down one notch."""
+        self._zone_volume("Z2", "UP")
+
+    def z3_volume_up(self) -> None:
+        """Turn the volume level down one notch."""
+        self._zone_volume("Z3", "UP")
+
+    def z2_volume_down(self) -> None:
+        """Turn the volume level down one notch."""
+        self._zone_volume("Z2", "DOWN")
+
+    def z3_volume_down(self) -> None:
+        """Turn the volume level down one notch."""
+        self._zone_volume("Z3", "DOWN")
 
     def set_channel_bias(self, chan: str, level: float) -> None:
         """Set the volume level.
@@ -398,6 +532,24 @@ class MDAVR:
             return
         self.write_queue.put_nowait(("SI", source.value))
 
+    def z2_select_source(self, source: str) -> None:
+        """Select the input source."""
+        try:
+            source = self.CMDS_DEFS["SI"].values[source.replace(" ", "")]
+        except:
+            logging.warning(f"Warning: {source} is not a valid source")
+            return
+        self.write_queue.put_nowait(("Z2", source.value))
+
+    def z3_select_source(self, source: str) -> None:
+        """Select the input source."""
+        try:
+            source = self.CMDS_DEFS["SI"].values[source.replace(" ", "")]
+        except:
+            logging.warning(f"Warning: {source} is not a valid source")
+            return
+        self.write_queue.put_nowait(("Z3", source.value))
+
     def select_sound_mode(self, mode: str) -> None:
         """Select the sound mode."""
         try:
@@ -440,6 +592,22 @@ class MDAVR:
 
     # API ends here
 
+    def _zone_volume(self, zone: str, uod: str) -> None:
+        """Turn the volume level up one notch."""
+        self.write_queue.put_nowait((zone, uod))
+
+    def _zone_set_volume(self, zone: str, level: float) -> None:
+        """Set the volume level.
+
+        Arguments:
+        zone -- The zone affected
+        level -- An integer value between 0 and `max_volume`.
+        """
+        if level > self.maxvol:
+            level = maxvol
+        level = int(level)
+        self.write_queue.put_nowait((zone, f"{level:02}"))
+
     async def _send_command(self, cmd: str, val: Any) -> asyncio.Future:
         tosend = f"{cmd}{val}\r"
         logging.debug(f"Sending {tosend}")
@@ -466,7 +634,7 @@ class MDAVR:
             # A few special cases ... for now
             if response.startswith("SSINFAISFSV"):
                 try:
-                    sr = int(response.split(" ")[-1])
+                    sr = int(only_int(response.split(" ")[-1]))
                     if sr > 200:
                         sr = round(sr / 10, 1)
                     else:
@@ -478,7 +646,8 @@ class MDAVR:
                     else:
                         logging.debug(f"Error with sampling rate: {e}")
             else:
-                logging.warning(f"Warning _parse_{match} is not defined.")
+                self._parse_many(match, response.strip()[len(match) :])
+                logging.debug(f"Warning _parse_{match} is not defined.")
 
         return match
 
@@ -509,17 +678,17 @@ class MDAVR:
                     if self.notify:
                         self.notify(lbl, self.status[lbl])
 
-    def _parse_PW(self, resp: str) -> None:
-        self._parse_many("PW", resp)
+    # def _parse_PW(self, resp: str) -> None:
+    # self._parse_many("PW", resp)
 
-    def _parse_ECO(self, resp: str) -> None:
-        self._parse_many("ECO", resp)
+    # def _parse_ECO(self, resp: str) -> None:
+    # self._parse_many("ECO", resp)
 
-    def _parse_SI(self, resp: str) -> None:
-        self._parse_many("SI", resp)
+    # def _parse_SI(self, resp: str) -> None:
+    # self._parse_many("SI", resp)
 
-    def _parse_PV(self, resp: str) -> None:
-        self._parse_many("PV", resp)
+    # def _parse_PV(self, resp: str) -> None:
+    # self._parse_many("PV", resp)
 
     def _parse_MU(self, resp: str) -> None:
         nval = resp == "ON"
@@ -528,6 +697,64 @@ class MDAVR:
             self.status[lbl] = nval
             if self.notify:
                 self.notify(lbl, self.status[lbl])
+
+    def _parse_Z2MU(self, resp: str) -> None:
+        nval = resp == "ON"
+        lbl = self.CMDS_DEFS["Z2MU"].label
+        if self.status[lbl] != nval:
+            self.status[lbl] = nval
+            if self.notify:
+                self.notify(lbl, self.status[lbl])
+
+    def _parse_Z3MU(self, resp: str) -> None:
+        nval = resp == "ON"
+        lbl = self.CMDS_DEFS["Z3MU"].label
+        if self.status[lbl] != nval:
+            self.status[lbl] = nval
+            if self.notify:
+                self.notify(lbl, self.status[lbl])
+
+    def _parse_zone(self, zone: str, resp: str) -> None:
+        """ Naturaly, those idiots had tn  overload the zone prefix for
+        power, volume and source...
+        """
+        if resp in ["ON", "OFF"]:
+            self._parse_many(zone, resp)
+            return
+
+        if resp.startswith("SMART"):
+            # not handled
+            return
+
+        if resp.startswith("FAVORITE"):
+            # not handled, learn to spell!
+            return
+
+        try:
+            logging.debug(f"Checking level for {zone}")
+            level = only_int(resp)
+            if len(level) > 2:
+                level = int(level) / 10
+            else:
+                level = float(level)
+
+            lbl = self.CMDS_DEFS[zone + "MV"].label
+            if self.status[lbl] != level:
+                self.status[lbl] = level
+                if self.notify:
+                    self.notify(lbl, self.status[lbl])
+        except:
+            # Probably the source
+            try:
+                self._parse_many(zone + "SI", resp)
+            except Exception as e:
+                logging.debug(f"Failed when parsing {zone}: {e}")
+
+    def _parse_Z2(self, resp: str) -> None:
+        self._parse_zone("Z2", resp)
+
+    def _parse_Z3(self, resp: str) -> None:
+        self._parse_zone("Z3", resp)
 
     def _parse_CV(self, resp: str) -> None:
         """ Different here... Needs to be reset"""
@@ -604,7 +831,10 @@ class MDAVR:
                 return
 
             logging.debug(f"Received: {data}")
-            match = self._process_response(data.decode().strip("\r"))
+            try:
+                match = self._process_response(data.decode().strip("\r"))
+            except Exception as e:
+                logging.debug(f"Problem processing respionse: {e}")
 
     async def _do_write(self):
         """ Keep on reading the info coming from the AVR"""
