@@ -126,7 +126,7 @@ Current "muted" status of the device: True or False
 
 ### Float Attr: volume, z2_volume, z3_volume
 
-Current zone volume of the device. From 0.0 to max_volume by 0,5 increments
+Current zone volume of the device. From 0.0 to max_volume by 0.5/1.0 increments
 
 ### Float Attr: max_volume
 
@@ -189,7 +189,7 @@ No parameter.
 
 Ask the device to query its current status. Returns None.
 
-### Method: turn_on, main_tunr_on, z2_turn_on, z3_turn_on
+### Method: turn_on, main_turn_on, z2_turn_on, z3_turn_on
 
 No parameter.
 
@@ -215,7 +215,9 @@ Returns None.
 
 One parameter:
 
-    level: float, valuer between 0.0 and 98.0 in 0.5 increments for main zone and 1.0 increment for other zones.
+    level: float, valuer between 0.0 and 98.0.
+
+Note that the main zone uses 0.5 increments, whilst the other zone use 1.0 increments.
 
 Set the volume level.
 
@@ -337,7 +339,9 @@ everytime the channel bias info is received.
 One parameter:
 
     addr: The multicast address to use for discovery, by default this is the multicast address for SSDP discovery.
-    callb: A callable. It is called when and HEOS service is discoverd. The callablew must accept one parameter, a dictionary with the following keys:
+    callb: A callable. It is called when and HEOS service is discovered.
+
+The callable must accept one parameter, a dictionary with the following keys:
 
         ip: ip address of the device
         name: friendly name
