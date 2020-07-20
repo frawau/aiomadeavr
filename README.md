@@ -154,7 +154,7 @@ Not all sound_mode are available to all devices.
 
 ### String Attr: picture_mode
 
-Current video processing mode, for instance: Custum, Vivid, ISF Day,...
+Current video processing mode, for instance: Custom, Vivid, ISF Day,...
 
 ### List Attr: picture_mode_list
 
@@ -182,6 +182,30 @@ value is the bias as a float. The bias is between -12 dB and +12 dB
 List of all the possible channels for which a bias can be set. When setting a channel bias the name MUST BE in this list.
 
 Note that this list is dynamic has it depends on the sound mode. Values are like: Front Right, Surrond Left,...
+
+### String Attr: drc_mode
+
+Current DRC mode, for instance: Off, Medium,...
+
+### List Attr: drc_mode_list
+
+List of all the possible drc_mode. When setting the drc_mode, the name MUST BE in this list.
+
+Not all drc_mode are available to all devices.
+
+### String Attr: dynamic_volume_mode
+
+Current Dynamic Volume mode, for instance: Off, Evening,...
+
+### List Attr: dynamic_volume_mode_list
+
+List of all the possible dynamic_volume_mode. When setting the dynamic_volume_mode, the name MUST BE in this list.
+
+Not all dynamic_volume_mode are available to all devices.
+
+### Integer Attr: delay
+
+The current delay in milliseconds. Ranges from 0 to 999
 
 ### Method: refresh
 
@@ -318,6 +342,36 @@ One parameter:
     mode: The mode name. Must be in eco_mode_list
 
 Set the eco mode for the device.
+
+Returns None.
+
+### Method: set_delay
+
+One parameter:
+
+    level: int, valuer between 0 and 9999.
+
+Set the sound delay.
+
+Returns None.
+
+### Method: select_drc_mode
+
+One parameter:
+
+        mode: The mode name. Must be in drc_mode_list
+
+Set the DRC mode for the device.
+
+        Returns None.
+
+### Method: select_dynamic_volume_mode
+
+One parameter:
+
+    mode: The mode name. Must be in dynamic_volume_mode_list
+
+Set the Dynamic Volume mode for the device.
 
 Returns None.
 
