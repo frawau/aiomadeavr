@@ -47,6 +47,7 @@ from .enums import (
 SSTRANSFORM = [
     ("Audio-", " "),
     ("Dd", "Dolby Digital "),
+    ("Hd", "HD "),
     ("DD", "Dolby Digital "),
     ("Dts", "DTS"),
     ["Mstr", "Master "],
@@ -150,6 +151,12 @@ class MDAVR:
         "PV": _CommandDef("Picture Mode", PictureMode),
         "ECO": _CommandDef("Eco Mode", EcoMode),
         "SSSOD": _CommandDef("Available Source", InputSource),
+        # SSANA ? analog inputs
+        # SSHDM ? Mapping between source and HDMI connection
+        # SSDIN ? digital inputs,  COax OPtical
+        # SSSPC ? Speakers' configuration
+        # SSPAA ? Not sure. Active speakers config? Also returns SSSPC
+        # SSQSNZMA ?  Smart select.. what for?
     }
 
     _reader: asyncio.StreamReader
@@ -678,18 +685,6 @@ class MDAVR:
                     if self.notify:
                         self.notify(lbl, self.status[lbl])
 
-    # def _parse_PW(self, resp: str) -> None:
-    # self._parse_many("PW", resp)
-
-    # def _parse_ECO(self, resp: str) -> None:
-    # self._parse_many("ECO", resp)
-
-    # def _parse_SI(self, resp: str) -> None:
-    # self._parse_many("SI", resp)
-
-    # def _parse_PV(self, resp: str) -> None:
-    # self._parse_many("PV", resp)
-
     def _parse_MU(self, resp: str) -> None:
         nval = resp == "ON"
         lbl = self.CMDS_DEFS["MU"].label
@@ -834,7 +829,7 @@ class MDAVR:
             try:
                 match = self._process_response(data.decode().strip("\r"))
             except Exception as e:
-                logging.debug(f"Problem processing respionse: {e}")
+                logging.debug(f"Problem processing response: {e}")
 
     async def _do_write(self):
         """ Keep on reading the info coming from the AVR"""
