@@ -33,15 +33,7 @@ import logging
 import re
 from enum import Enum
 from typing import Any, List, Mapping, Optional, Callable
-from .enums import (
-    InputSource,
-    Power,
-    SurroundMode,
-    ChannelBias,
-    EcoMode,
-    AudioInput,
-    PictureMode,
-)
+from .enums import *
 
 # Some replacement for the surround sound format
 SSTRANSFORM = [
@@ -58,6 +50,7 @@ SSTRANSFORM = [
     (" Es ", " ES "),
 ]
 EXTRAS = ["SSINFAI"]
+NEEDSPACE = ["PSDEL", "PSDYNVOL", "PSDRC"]
 
 
 def cc_string(identifier: str) -> str:
@@ -151,6 +144,9 @@ class MDAVR:
         "PV": _CommandDef("Picture Mode", PictureMode),
         "ECO": _CommandDef("Eco Mode", EcoMode),
         "SSSOD": _CommandDef("Available Source", InputSource),
+        "PSDEL": _CommandDef("Sound Delay", None),
+        "PSDRC": _CommandDef("Dynamic Range Compression", DRCMode),
+        "PSDYNVOL": _CommandDef("Dynamic Volume", DynamicMode),
         # SSANA ? analog inputs
         # SSHDM ? Mapping between source and HDMI connection
         # SSDIN ? digital inputs,  COax OPtical
@@ -181,6 +177,10 @@ class MDAVR:
         for x in self.CMDS_DEFS:
             if len(x) < 5:
                 self.status[self.CMDS_DEFS[x].label] = "-"
+
+        for x in ["PSDEL", "PSDRC", "PSDYNVOL"]:
+            self.status[self.CMDS_DEFS[x].label] = "-"
+
         self.cvend = True
         self.notify = None
         self.mysources = []
@@ -320,11 +320,41 @@ class MDAVR:
         """List of currently available."""
         return [x for x in self._get_current("CV").keys()]
 
+    @property
+    def drc_mode(self) -> str:
+        """Current ECO mode."""
+        return self._get_current("PSDRC")
+
+    @property
+    def drc_mode_list(self) -> List[str]:
+        """List of available sound modes."""
+        return self._get_list("PSDRC")
+
+    @property
+    def dynamic_volume_mode(self) -> str:
+        """Current ECO mode."""
+        return self._get_current("PSDYNVOL")
+
+    @property
+    def dynamic_volume_mode_list(self) -> List[str]:
+        """List of available sound modes."""
+        return self._get_list("PSDYNVOL")
+
+    @property
+    def delay(self) -> str:
+        """Current ECO mode."""
+        return self._get_current("PSDEL")
+
     def refresh(self) -> None:
         """Refresh all properties from the AVR."""
 
         for cmd_def in self.CMDS_DEFS:
-            fut = self.write_queue.put_nowait((cmd_def, "?"))
+            if cmd_def in NEEDSPACE:
+                qs = " ?"
+            else:
+                qs = "?"
+
+            fut = self.write_queue.put_nowait((cmd_def, qs))
 
     def turn_on(self) -> None:
         """Turn the AVR on."""
@@ -584,6 +614,37 @@ class MDAVR:
             return
         self.write_queue.put_nowait(("ECO", mode.value))
 
+    def set_delay(self, level: float) -> None:
+        """Set the volume level.
+
+        Arguments:
+        level -- An integer value between 0 and `max_volume`.
+        """
+        level = int(level)
+        if level < 0:
+            level = 0
+        if level > 999:
+            level = 999
+        self.write_queue.put_nowait(("PSDEL", f" {level:03}"))
+
+    def select_drc_mode(self, mode: str) -> None:
+        """Select the sound mode."""
+        try:
+            mode = self.CMDS_DEFS["PSDRC"].values[mode.replace(" ", "").title()]
+        except:
+            logging.warning(f"Warning: {mode} is not a valid DRC  mode")
+            return
+        self.write_queue.put_nowait(("PSDRC", " " + mode.value))
+
+    def select_dynamic_volume_mode(self, mode: str) -> None:
+        """Select the sound mode."""
+        try:
+            mode = self.CMDS_DEFS["PSDYNVOL"].values[mode.replace(" ", "").title()]
+        except:
+            logging.warning(f"Warning: {mode} is not a valid Dynamic Volume  mode")
+            return
+        self.write_queue.put_nowait(("PSDYNVOL", " " + mode.value))
+
     def notifyme(self, func: Callable) -> None:
         """Register a callback for when an event happens. The callable should have 2 parameters,
         The label of the the changing value and the new value
@@ -636,7 +697,7 @@ class MDAVR:
         match = matches[0]
 
         if getattr(self, "_parse_" + match, None):
-            getattr(self, "_parse_" + match)(response.strip()[len(match) :])
+            getattr(self, "_parse_" + match)(response.strip()[len(match) :].strip())
         else:
             # A few special cases ... for now
             if response.startswith("SSINFAISFSV"):
@@ -653,7 +714,7 @@ class MDAVR:
                     else:
                         logging.debug(f"Error with sampling rate: {e}")
             else:
-                self._parse_many(match, response.strip()[len(match) :])
+                self._parse_many(match, response.strip()[len(match) :].strip())
                 logging.debug(f"Warning _parse_{match} is not defined.")
 
         return match
@@ -808,6 +869,17 @@ class MDAVR:
             self.status[lbl] = resp
             if self.notify:
                 self.notify(lbl, self.status[lbl])
+
+    def _parse_PSDEL(self, resp: str) -> None:
+        level = only_int(resp)
+
+        if level:
+            level = int(level)
+            lbl = self.CMDS_DEFS["PSDEL"].label
+            if self.status[lbl] != level:
+                self.status[lbl] = level
+                if self.notify:
+                    self.notify(lbl, self.status[lbl])
 
     async def _do_read(self):
         """ Keep on reading the info coming from the AVR"""

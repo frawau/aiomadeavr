@@ -26,4 +26,4 @@
 from .avr import avr_factory, AvrError, AvrTimeoutError
 from .discovery import start_discovery
 
-__version__ = "0.6"
+__version__ = "0.7"

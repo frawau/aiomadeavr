@@ -152,3 +152,20 @@ class PictureMode(Enum):
     Custom = "CTM"
     ISFDay = "DAY"
     ISFNight = "NGT"
+
+
+class DRCMode(Enum):
+    # Dynamic Range compression values
+    Off = "OFF"
+    Auto = "AUTO"
+    High = "HI"
+    Medium = "MID"
+    Low = "LOW"
+
+
+class DynamicMode(Enum):
+    # Dynamic colume
+    Off = "OFF"
+    Day = "DAY"
+    Evening = "EVE"
+    Night = "NGT"

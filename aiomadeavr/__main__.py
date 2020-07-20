@@ -169,6 +169,32 @@ def readin():
                             print("\nError: Picture mode selection incorrect.\n")
                     except:
                         print("\nError: Picture mode selection must be a number.\n")
+                elif MyDevices.secondary == "drcmode":
+                    loi = MyDevices.doi.drc_mode_list
+                    loi.sort()
+                    try:
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
+                            mode = loi[sel]
+                            MyDevices.doi.select_drc_mode(mode)
+                        else:
+                            print("\nError: DRC mode selection incorrect.\n")
+                    except:
+                        print("\nError: DRC mode selection must be a number.\n")
+                elif MyDevices.secondary == "dynvolmode":
+                    loi = MyDevices.doi.dynamic_volume_mode_list
+                    loi.sort()
+                    try:
+                        sel = int(lov[0]) - 1
+                        if sel >= 0 and sel < len(loi):
+                            mode = loi[sel]
+                            MyDevices.doi.select_dynamic_volume_mode(mode)
+                        else:
+                            print("\nError: Dynamic Volume mode selection incorrect.\n")
+                    except:
+                        print(
+                            "\nError: Dynamic Volume mode selection must be a number.\n"
+                        )
 
                 MyDevices.doi = None
                 MyDevices.secondary = None
@@ -350,6 +376,34 @@ def readin():
                         )
                     MyDevices.doi = None
                 elif int(lov[0]) == 18:
+                    try:
+                        lvl = int(lov[1])
+                        MyDevices.doi.set_delay(lvl)
+                    except:
+                        print(f"Error: {lov[1]} is not an integer.")
+                        print("Error: For delay you must specify an integer.\n")
+                    MyDevices.doi = None
+                elif int(lov[0]) == 19:
+                    MyDevices.secondary = "drcmode"
+                    los = MyDevices.doi.drc_mode_list
+                    los.sort()
+                    print("Select DRC mode for {}:".format(MyDevices.doi.name))
+                    idx = 1
+                    for src in los:
+                        print(f"\t[{idx}]\t{src}")
+                        idx += 1
+                elif int(lov[0]) == 20:
+                    MyDevices.secondary = "dynvolmode"
+                    los = MyDevices.doi.dynamic_volume_mode_list
+                    los.sort()
+                    print(
+                        "Select Dynamic Volume mode for {}:".format(MyDevices.doi.name)
+                    )
+                    idx = 1
+                    for src in los:
+                        print(f"\t[{idx}]\t{src}")
+                        idx += 1
+                elif int(lov[0]) == 21:
                     print(f"Status for {MyDevices.doi.name}")
                     quick_print(MyDevices.doi.status)
                     MyDevices.doi = None
@@ -383,10 +437,13 @@ def readin():
             print("\t[12]\tZone 2 Source")
             print("\t[13]\tZone 3 Source")
             print("\t[14]\tSurround Mode")
-            print("\t[915\tChannel Bias")
+            print("\t[15]\tChannel Bias")
             print("\t[16]\tPicture Mode")
             print("\t[17]\tEco mode (on|off|auto)")
-            print("\t[18]\tInfo")
+            print("\t[18]\tDelay (int)")
+            print("\t[19]\tDynamic Range Compression Mode")
+            print("\t[20]\tDynamic Volume Mode")
+            print("\t[21]\tInfo")
             print("")
             print("\t[0]\tBack to device selection")
     else:
